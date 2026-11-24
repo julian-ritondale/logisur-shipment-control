@@ -80,8 +80,8 @@ El backend está organizado por funcionalidad, en `backend/src/modules/`: **un p
 | Paquete | Qué hace |
 | --- | --- |
 | `exports` | `/exports`: sube, guarda y lee las exportaciones. Contiene el lector (`reader/`) y el almacenamiento (`storage/`). |
-| `delivery-notes` | `/delivery-notes`: los remitos de cada exportación. Contiene el pipeline (`pipeline/`), los tipos (`types/`) y los esquemas Zod (`schemas/`). |
-| `runs` | `/runs`: crea corridas (ejecuta el pipeline sobre una exportación, y los reintentos), las lista y las lee con su desglose. Guarda el avance de cada envío. |
+| `delivery-notes` | `/delivery-notes`: los remitos de cada exportación. Solo el modelo de dominio del remito: los tipos (`types/`) y los esquemas Zod de sus campos (`schemas/`). |
+| `runs` | `/runs`: crea corridas (ejecuta el pipeline sobre una exportación, y los reintentos), las lista y las lee con su desglose. Contiene el pipeline (`pipeline/`) y guarda el avance de cada envío. |
 | `attempts` | `/attempts`: qué le pasó a cada remito en cada corrida (solo lectura; los registra `runs`). |
 | `shipments` | Consulta de envíos, y su reintento (que delega en `runs`). |
 | `carriers` | Registro de transportistas, contrato del cliente y router. |

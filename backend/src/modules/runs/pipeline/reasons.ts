@@ -1,5 +1,5 @@
 import type { JsonObject } from '../../../common/types/json.js';
-import type { DeliveryNoteField } from '../types/delivery-note.types.js';
+import type { DeliveryNoteField } from '../../delivery-notes/types/delivery-note.types.js';
 import type { Failure, Reason, Step } from './types/pipeline.types.js';
 
 export const MIN_PACKAGES = 1;

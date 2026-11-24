@@ -5,7 +5,7 @@ import {
   type Field,
 } from '../../../../common/types/field.js';
 import { Carrier, carrierName } from '../../../carriers/carrier-registry.js';
-import type { NormalizedDeliveryNote } from '../../types/delivery-note.types.js';
+import type { NormalizedDeliveryNote } from '../../../delivery-notes/types/delivery-note.types.js';
 import { reason, ReasonCode } from '../reasons.js';
 import { Outcome, type Reason } from '../types/pipeline.types.js';
 import { contentHash, stableStringify } from './content-hash.js';

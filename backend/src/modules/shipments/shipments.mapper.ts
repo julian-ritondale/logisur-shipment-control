@@ -5,7 +5,7 @@ import {
 import type { JsonObject } from '../../common/types/json.js';
 import type { Shipment } from '../../generated/prisma/client.js';
 import { carrierName, isCarrier } from '../carriers/carrier-registry.js';
-import type { ReasonCode } from '../delivery-notes/pipeline/reasons.js';
+import type { ReasonCode } from '../runs/pipeline/reasons.js';
 import type { NormalizedDeliveryNote } from '../delivery-notes/types/delivery-note.types.js';
 import type { ListShipmentsRequestDto } from './dto/list-shipments.request.dto.js';
 import type {

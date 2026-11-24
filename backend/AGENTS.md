@@ -53,8 +53,8 @@ src/
   modules/
     carriers/               carrier registry (a table of names and spellings), CarrierClient contract, CarrierRouter
     exports/                /exports: upload, store and read exports; reader/ and storage/
-    delivery-notes/         /delivery-notes; types/, schemas/ (Zod) and pipeline/ (the steps)
-    runs/                   /runs: create (execute the pipeline, and retries), list and read runs; saves each shipment's progress
+    delivery-notes/         /delivery-notes: the remito domain model only; types/ and schemas/ (Zod field parsers)
+    runs/                   /runs: create (execute the pipeline, and retries), list and read runs; pipeline/ (the steps); saves each shipment's progress
     attempts/               /attempts: what happened to each delivery note in each run (read-only)
     shipments/              /shipments: read shipments, and retry one (through runs)
 ```
@@ -95,7 +95,9 @@ src/
   - `ConflictError` → 409
 - **Ids in URLs are opaque UUIDs**, validated with `IdRequestDto` (`@IsUUID('4')`). Don't leak storage details such as file names or extensions into the API.
 
-## The delivery notes pipeline (`modules/delivery-notes/pipeline/`)
+## The delivery notes pipeline (`modules/runs/pipeline/`)
+
+`delivery-notes` holds only the remito domain model (ADR 0010): its types (raw, stored, normalized, valid) and the Zod parsers for its fields. The pipeline that delivers remitos lives in `runs`, which executes it; other modules import its types (`Step`, `Outcome`, `ReasonCode`) but never run it.
 
 How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.md`](../SOLUCION.md). Decision: `docs/adr/0005-*.md`.
 

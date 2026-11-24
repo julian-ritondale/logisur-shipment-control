@@ -4,11 +4,14 @@ import {
   valueOf,
   type Field,
 } from '../../../../common/types/field.js';
-import { PROVINCES, Service } from '../../schemas/delivery-note.schemas.js';
+import {
+  PROVINCES,
+  Service,
+} from '../../../delivery-notes/schemas/delivery-note.schemas.js';
 import type {
   NormalizedDeliveryNote,
   ValidDeliveryNote,
-} from '../../types/delivery-note.types.js';
+} from '../../../delivery-notes/types/delivery-note.types.js';
 import { fromCarrierError, type CarrierAccess } from '../carrier-access.js';
 import {
   failure,

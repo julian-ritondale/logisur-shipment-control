@@ -13,29 +13,25 @@ import {
   type CarrierRouter,
 } from '../carriers/carrier-router.js';
 import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service.js';
-import type { Delivered } from '../delivery-notes/pipeline/deliverer/deliverer.js';
+import type { Delivered } from './pipeline/deliverer/deliverer.js';
 import {
   deliveryNotesPipeline,
   type DeliveryNotesPipeline,
-} from '../delivery-notes/pipeline/delivery-notes.pipeline.js';
-import { contentHash } from '../delivery-notes/pipeline/filter/content-hash.js';
+} from './pipeline/delivery-notes.pipeline.js';
+import { contentHash } from './pipeline/filter/content-hash.js';
 import type {
   Candidate,
   Decided,
   Decision,
   DeliveredShipment,
-} from '../delivery-notes/pipeline/filter/filters.js';
-import {
-  failure,
-  reason,
-  ReasonCode,
-} from '../delivery-notes/pipeline/reasons.js';
-import { runStages } from '../delivery-notes/pipeline/stage.js';
+} from './pipeline/filter/filters.js';
+import { failure, reason, ReasonCode } from './pipeline/reasons.js';
+import { runStages } from './pipeline/stage.js';
 import {
   Outcome,
   Step,
   type Failure,
-} from '../delivery-notes/pipeline/types/pipeline.types.js';
+} from './pipeline/types/pipeline.types.js';
 import { ExportsService } from '../exports/exports.service.js';
 import type { ListRunsRequestDto } from './dto/list-runs.request.dto.js';
 import type {

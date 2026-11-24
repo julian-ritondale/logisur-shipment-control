@@ -1,9 +1,6 @@
 import type { RunKind, RunStatus } from '../../../generated/prisma/client.js';
-import type { ReasonCode } from '../../delivery-notes/pipeline/reasons.js';
-import type {
-  Outcome,
-  Step,
-} from '../../delivery-notes/pipeline/types/pipeline.types.js';
+import type { ReasonCode } from '../pipeline/reasons.js';
+import type { Outcome, Step } from '../pipeline/types/pipeline.types.js';
 
 export class RunTotalsResponseDto {
   total: number;

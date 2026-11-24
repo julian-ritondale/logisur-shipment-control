@@ -1,7 +1,11 @@
 import { InvalidExportError } from '../exports.errors.js';
-import { EXPORT_SCHEMA } from '../../delivery-notes/schemas/delivery-note.schemas.js';
+import { z } from 'zod';
+import { RAW_DELIVERY_NOTE_SCHEMA } from '../../delivery-notes/schemas/delivery-note.schemas.js';
 import type { RawDeliveryNote } from '../../delivery-notes/types/delivery-note.types.js';
 import type { ExportsReader } from './exports.reader.js';
+
+/** LogiSur's export: a JSON array of remitos. */
+const EXPORT_SCHEMA = z.array(RAW_DELIVERY_NOTE_SCHEMA);
 
 const ERRORS = {
   NOT_UTF8: 'The export is not valid UTF-8',

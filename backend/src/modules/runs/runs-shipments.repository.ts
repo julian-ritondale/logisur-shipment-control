@@ -8,8 +8,8 @@ import {
 import type { JsonObject } from '../../common/types/json.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { Carrier } from '../carriers/carrier-registry.js';
-import type { DeliveredShipment } from '../delivery-notes/pipeline/filter/filters.js';
-import type { Failure } from '../delivery-notes/pipeline/types/pipeline.types.js';
+import type { DeliveredShipment } from './pipeline/filter/filters.js';
+import type { Failure } from './pipeline/types/pipeline.types.js';
 import type { NormalizedDeliveryNote } from '../delivery-notes/types/delivery-note.types.js';
 
 const UNIQUE_VIOLATION = 'P2002';

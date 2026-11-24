@@ -14,7 +14,7 @@ import {
   type Failure,
   type Reason,
   type Step,
-} from '../delivery-notes/pipeline/types/pipeline.types.js';
+} from './pipeline/types/pipeline.types.js';
 import type { Carrier } from '../carriers/carrier-registry.js';
 
 export type AttemptResult =

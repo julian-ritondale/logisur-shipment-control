@@ -1,6 +1,6 @@
 import type { CarrierClient } from '../../carriers/carrier-client.js';
 import type { Carrier } from '../../carriers/carrier-registry.js';
-import type { StoredDeliveryNote } from '../types/delivery-note.types.js';
+import type { StoredDeliveryNote } from '../../delivery-notes/types/delivery-note.types.js';
 import { carrierAccess } from './carrier-access.js';
 import { deliverer } from './deliverer/deliverer.js';
 import {

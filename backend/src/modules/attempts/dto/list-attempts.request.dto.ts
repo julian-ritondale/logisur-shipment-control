@@ -1,12 +1,12 @@
 import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { PageRequestDto } from '../../../common/dto/page.request.dto.js';
-import { ReasonCode } from '../../delivery-notes/pipeline/reasons.js';
+import { ReasonCode } from '../../runs/pipeline/reasons.js';
 import {
   OUTCOMES,
   STEPS,
   type Outcome,
   type Step,
-} from '../../delivery-notes/pipeline/types/pipeline.types.js';
+} from '../../runs/pipeline/types/pipeline.types.js';
 
 const MAX_NUMBER_LENGTH = 100;
 

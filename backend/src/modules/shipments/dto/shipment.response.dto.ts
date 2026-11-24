@@ -3,7 +3,7 @@ import type {
   PipelineStep,
   ShipmentStatus,
 } from '../../../generated/prisma/client.js';
-import type { ReasonCode } from '../../delivery-notes/pipeline/reasons.js';
+import type { ReasonCode } from '../../runs/pipeline/reasons.js';
 import type { NormalizedDeliveryNote } from '../../delivery-notes/types/delivery-note.types.js';
 
 /** A delivery note on its way to a carrier. Its attempts: `GET /attempts?shipmentId=`. */

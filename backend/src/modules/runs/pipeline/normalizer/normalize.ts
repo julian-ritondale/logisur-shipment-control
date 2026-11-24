@@ -7,11 +7,11 @@ import {
   RAW_DELIVERY_NOTE_SCHEMA,
   SERVICE_SCHEMA,
   TEXT_SCHEMA,
-} from '../../schemas/delivery-note.schemas.js';
+} from '../../../delivery-notes/schemas/delivery-note.schemas.js';
 import type {
   NormalizedDeliveryNote,
   RawDeliveryNote,
-} from '../../types/delivery-note.types.js';
+} from '../../../delivery-notes/types/delivery-note.types.js';
 
 const text = fieldParser(TEXT_SCHEMA);
 const integer = fieldParser(INTEGER_SCHEMA);

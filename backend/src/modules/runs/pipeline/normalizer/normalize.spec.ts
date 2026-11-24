@@ -1,7 +1,7 @@
 import { invalid, MISSING, valid } from '../../../../common/types/field.js';
 import type { JsonObject } from '../../../../common/types/json.js';
 import { Carrier } from '../../../carriers/carrier-registry.js';
-import { Service } from '../../schemas/delivery-note.schemas.js';
+import { Service } from '../../../delivery-notes/schemas/delivery-note.schemas.js';
 import { normalize } from './normalize.js';
 
 const recipient = {

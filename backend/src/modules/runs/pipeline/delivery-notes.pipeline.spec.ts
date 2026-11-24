@@ -8,7 +8,7 @@ import { Carrier } from '../../carriers/carrier-registry.js';
 import type {
   StoredDeliveryNote,
   ValidDeliveryNote,
-} from '../types/delivery-note.types.js';
+} from '../../delivery-notes/types/delivery-note.types.js';
 import { deliveryNotesPipeline } from './delivery-notes.pipeline.js';
 import { contentHash } from './filter/content-hash.js';
 import { normalize } from './normalizer/normalize.js';

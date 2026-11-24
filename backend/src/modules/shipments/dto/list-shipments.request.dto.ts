@@ -5,11 +5,8 @@ import {
   DELIVERABLE_CARRIERS,
   type Carrier,
 } from '../../carriers/carrier-registry.js';
-import { ReasonCode } from '../../delivery-notes/pipeline/reasons.js';
-import {
-  STEPS,
-  type Step,
-} from '../../delivery-notes/pipeline/types/pipeline.types.js';
+import { ReasonCode } from '../../runs/pipeline/reasons.js';
+import { STEPS, type Step } from '../../runs/pipeline/types/pipeline.types.js';
 
 const MAX_NUMBER_LENGTH = 100;
 

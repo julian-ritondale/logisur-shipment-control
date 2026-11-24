@@ -1,5 +1,5 @@
 import type { JsonObject } from '../../../../common/types/json.js';
-import { Service } from '../../schemas/delivery-note.schemas.js';
+import { Service } from '../../../delivery-notes/schemas/delivery-note.schemas.js';
 import { normalize } from '../normalizer/normalize.js';
 import { ReasonCode } from '../reasons.js';
 import { Step } from '../types/pipeline.types.js';

@@ -4,8 +4,8 @@ import {
 } from '../../common/dto/page.request.dto.js';
 import type { JsonObject } from '../../common/types/json.js';
 import { ShipmentStatus } from '../../generated/prisma/client.js';
-import type { ReasonCode } from '../delivery-notes/pipeline/reasons.js';
-import type { Reason } from '../delivery-notes/pipeline/types/pipeline.types.js';
+import type { ReasonCode } from '../runs/pipeline/reasons.js';
+import type { Reason } from '../runs/pipeline/types/pipeline.types.js';
 import type { AttemptFilters, AttemptRow } from './attempts.repository.js';
 import type { AttemptResponseDto } from './dto/attempt.response.dto.js';
 import type { ListAttemptsRequestDto } from './dto/list-attempts.request.dto.js';

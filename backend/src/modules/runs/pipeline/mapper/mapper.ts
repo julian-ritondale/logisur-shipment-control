@@ -1,5 +1,5 @@
 import type { JsonObject } from '../../../../common/types/json.js';
-import type { ValidDeliveryNote } from '../../types/delivery-note.types.js';
+import type { ValidDeliveryNote } from '../../../delivery-notes/types/delivery-note.types.js';
 import type { CarrierAccess } from '../carrier-access.js';
 import type { Stage } from '../stage.js';
 import { fail, ok, Step } from '../types/pipeline.types.js';

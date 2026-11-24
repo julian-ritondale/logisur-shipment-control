@@ -5,9 +5,8 @@ import {
   lookupKey,
 } from '../../../common/schemas/field.schema.js';
 
+/** A remito as exported: any JSON object. */
 export const RAW_DELIVERY_NOTE_SCHEMA = z.record(z.string(), z.json());
-
-export const EXPORT_SCHEMA = z.array(RAW_DELIVERY_NOTE_SCHEMA);
 
 const INTEGER_TEXT = /^-?\d+$/;
 /** One decimal separator, "." or ",". Thousands separators ("1.234,5") are not guessed. */

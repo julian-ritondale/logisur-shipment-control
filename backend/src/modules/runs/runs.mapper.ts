@@ -4,7 +4,7 @@ import {
 } from '../../common/dto/page.request.dto.js';
 import type { Run } from '../../generated/prisma/client.js';
 import { carrierName, isCarrier } from '../carriers/carrier-registry.js';
-import type { ReasonCode } from '../delivery-notes/pipeline/reasons.js';
+import type { ReasonCode } from './pipeline/reasons.js';
 import type { ListRunsRequestDto } from './dto/list-runs.request.dto.js';
 import type {
   RunBreakdownResponseDto,
