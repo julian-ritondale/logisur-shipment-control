@@ -62,3 +62,14 @@ Found in `remitos_2026-09-30.json`. Assume future exports have the same problems
 - **`peso_kg` isn't always a number.** About 40% of the values are strings with a decimal comma, such as `"145,1"`.
 - **Delivery note numbers repeat.** `R-10000507` appears more than once.
 - **Required data is missing.** For example, one record's `observaciones` says `Cliente no informó CP`: the customer didn't give a postal code.
+  - `R-10000477`: `codigo_postal` is `""`, explained by the note above.
+  - `R-10000516`: `direccion` is `"  "` (whitespace only), with no note explaining it.
+- **Invalid package counts.** `R-10000541` has `bultos: 0`. The carrier API requires `packages` ≥ 1.
+
+All the problem records above (`R-10000477`, `R-10000507`, `R-10000516` and `R-10000541`) are assigned to Expreso Andino, so they reach the load and have to be reported.
+
+### File-level details
+
+- Line endings are Windows CRLF, and there is no BOM. Readers should accept a BOM and either line ending anyway.
+- Every record has the same keys, both at the top level and inside `destinatario`. "Missing" values show up as empty or blank strings, never as absent keys or `null`, but code shouldn't rely on that.
+- Per carrier: 24 Expreso Andino (including both copies of `R-10000507`), 13 Cruz del Norte, 6 Transporte Litoral and 8 Retira Cliente.
