@@ -1,6 +1,6 @@
 # 0013. Validate requests with Zod
 
-- **Status:** Accepted. Supersedes the class-validator request DTOs of [0004](0004-delivery-notes-export-storage.md) and [0005](0005-functional-pipeline-persistence-and-idempotent-delivery.md).
+- **Status:** Superseded by [0014](0014-class-validator-for-dtos-zod-for-data.md). Superseded the class-validator request DTOs of [0004](0004-delivery-notes-export-storage.md) and [0005](0005-functional-pipeline-persistence-and-idempotent-delivery.md).
 - **Date:** 2026-11-24
 
 ## Context

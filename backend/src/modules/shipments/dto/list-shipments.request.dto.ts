@@ -1,21 +1,35 @@
-import { z } from 'zod';
-import {
-  MAX_NUMBER_LENGTH,
-  PAGE_REQUEST_SCHEMA,
-} from '../../../common/dto/page.request.dto.js';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { PageRequestDto } from '../../../common/dto/page.request.dto.js';
 import { ShipmentStatus } from '../../../generated/prisma/client.js';
 import { Carrier } from '../../carriers/carrier-registry.js';
-import { Cause, Step } from '../../../common/types/pipeline.types.js';
+import {
+  Cause,
+  STEPS,
+  type Step,
+} from '../../../common/types/pipeline.types.js';
 
-export const LIST_SHIPMENTS_REQUEST_SCHEMA = PAGE_REQUEST_SCHEMA.extend({
-  status: z.enum(ShipmentStatus).optional(),
-  carrier: z.enum(Carrier).optional(),
+const MAX_NUMBER_LENGTH = 100;
+
+export class ListShipmentsRequestDto extends PageRequestDto {
+  @IsOptional()
+  @IsIn(Object.values(ShipmentStatus))
+  status?: ShipmentStatus;
+
+  @IsOptional()
+  @IsIn(Object.values(Carrier))
+  carrier?: Carrier;
+
   /** `nro_remito`. */
-  deliveryNoteNumber: z.string().max(MAX_NUMBER_LENGTH).optional(),
-  failedStep: z.enum(Step).optional(),
-  cause: z.enum(Cause).optional(),
-});
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_NUMBER_LENGTH)
+  deliveryNoteNumber?: string;
 
-export type ListShipmentsRequestDto = z.infer<
-  typeof LIST_SHIPMENTS_REQUEST_SCHEMA
->;
+  @IsOptional()
+  @IsIn(STEPS)
+  failedStep?: Step;
+
+  @IsOptional()
+  @IsIn(Object.values(Cause))
+  cause?: Cause;
+}
