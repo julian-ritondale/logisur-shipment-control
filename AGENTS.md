@@ -24,6 +24,16 @@ LogiSur exports its daily delivery notes (*remitos*) as JSON. This system takes 
 - **`expreso-api/API.md` is the API spec.** Build against it and treat the mock as a black box. Don't read `expreso_api.py` to find out which requests fail, and never special-case specific `external_ref` values. Failure handling has to be generic.
 - **Record significant decisions as ADRs** in `docs/adr/` (see `docs/adr/README.md`). If a change contradicts an accepted ADR, write a new ADR that supersedes it instead of editing the old one.
 
+## Use the framework before writing your own
+
+Before writing infrastructure code, check what the framework (NestJS, React, Vite) or an already-installed package provides. That includes error handling, validation, configuration, file uploads, retries, caching, logging, routing, forms and data fetching. Hand-rolled versions duplicate behaviour that's already tested, drift from the framework's conventions, and get missed when the framework is upgraded.
+
+1. **Look it up for the installed version, not from memory.** These frameworks move fast, and the versions here are likely newer than what you know. Read the docs, the package's `.d.ts` files in `node_modules`, and the project's agent skills (`backend/.claude/skills/`).
+2. **Prefer extending the built-in over replacing it.** Subclass it, configure it or register a hook. Write only the part that's specific to this project, and delegate the rest.
+3. **When you do write it yourself, say why** in a comment or in the ADR. For example: "Nest's X doesn't cover Y."
+
+Example of the mistake: a catch-all `@Catch()` exception filter that rebuilt HTTP status names, the `HttpException` body format and 500-and-log handling. Nest's `BaseExceptionFilter` already does all of that. The fix was `ApplicationErrorFilter`, which catches only our own `ApplicationError`s, converts them to Nest exceptions and calls `super.catch()`.
+
 ## Commit messages
 
 Every commit follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). The spec is the authority; the rules that matter day to day are:
@@ -80,8 +90,9 @@ Docker Compose gives the backend these environment variables:
 - `EXPRESO_API_URL`: `http://expreso-api:8000`
 - `EXPRESO_API_KEY`: defaults to the mock's key `andino-test-7f3a91`
 - `REMITOS_DIR=/data`: the repo's `data/` folder is mounted read-only at `/data`. When running the backend on the host, point `REMITOS_DIR` at `../data`.
+- `DELIVERY_NOTES_DIR=/app/uploads`: where uploaded exports are stored (named volume `delivery-notes`). On the host it defaults to `./uploads` in the working directory, which is git-ignored. See ADR 0004.
 
-Nothing reads these variables yet. Use the same names when you wire up config. The frontend calls the backend through `/api/*`; nginx removes the `/api` prefix, so `/api/foo` reaches `backend:3000/foo`.
+Only `DELIVERY_NOTES_DIR` is read so far. Use the same names when you wire up the others. The frontend calls the backend through `/api/*`; nginx removes the `/api` prefix, so `/api/foo` reaches `backend:3000/foo`.
 
 ## Expreso Andino API essentials (full detail in `expreso-api/API.md`)
 
