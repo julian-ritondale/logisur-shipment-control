@@ -1,4 +1,7 @@
-# logisur-shipment-control
+# LogiSur Shipment Control
+
+[logisur-demo.webm](https://github.com/user-attachments/assets/66df0d40-d992-4975-804a-e6951b4c573f)
+
 
 Loads LogiSur's daily delivery notes (*remitos*) into the **Expreso Andino** carrier's shipments API. It picks out the remitos assigned to Expreso Andino, cleans up and validates the data, and creates each shipment exactly once. Transient API failures are retried, and every run reports what was loaded, skipped or rejected.
 
