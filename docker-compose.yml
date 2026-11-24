@@ -19,21 +19,43 @@ services:
     ports:
       - "8000:8000"
 
+  # Runs, shipments, attempts and uploaded exports (see SOLUCION.md).
+  # init.sql also creates logisur_test for the backend e2e tests.
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: logisur
+      POSTGRES_PASSWORD: logisur
+      POSTGRES_DB: logisur
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logisur -d logisur"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   backend:
     build: ./backend
     environment:
       PORT: "3000"
+      DATABASE_URL: postgresql://logisur:logisur@postgres:5432/logisur
+      CARRIER: ${CARRIER:-EXPRESO_ANDINO}
       EXPRESO_API_URL: http://expreso-api:8000
       EXPRESO_API_KEY: ${EXPRESO_API_KEY:-andino-test-7f3a91}
       REMITOS_DIR: /data
-      DELIVERY_NOTES_DIR: /app/uploads
     volumes:
       - ./data:/data:ro
-      - delivery-notes:/app/uploads
     ports:
       - "3000:3000"
     depends_on:
-      - expreso-api
+      postgres:
+        condition: service_healthy
+      expreso-api:
+        condition: service_started
 
   frontend:
     build: ./frontend
@@ -43,5 +65,5 @@ services:
       - backend
 
 volumes:
-  # Uploaded delivery notes exports, kept across rebuilds.
-  delivery-notes:
+  # Database files, kept across rebuilds. `docker compose down -v` wipes them.
+  postgres-data:

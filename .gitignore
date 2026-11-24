@@ -156,5 +156,3 @@ vite.config.ts.timestamp-*
 .nx/workspace-data
 .nx/migrate-runs
 
-# Uploaded delivery notes exports (local storage, see docs/adr/0004)
-backend/uploads/
