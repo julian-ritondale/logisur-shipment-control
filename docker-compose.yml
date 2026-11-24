@@ -26,8 +26,10 @@ services:
       EXPRESO_API_URL: http://expreso-api:8000
       EXPRESO_API_KEY: ${EXPRESO_API_KEY:-andino-test-7f3a91}
       REMITOS_DIR: /data
+      DELIVERY_NOTES_DIR: /app/uploads
     volumes:
       - ./data:/data:ro
+      - delivery-notes:/app/uploads
     ports:
       - "3000:3000"
     depends_on:
@@ -39,3 +41,7 @@ services:
       - "8080:80"
     depends_on:
       - backend
+
+volumes:
+  # Uploaded delivery notes exports, kept across rebuilds.
+  delivery-notes:

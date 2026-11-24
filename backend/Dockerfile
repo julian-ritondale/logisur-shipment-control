@@ -11,6 +11,8 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+# Local storage for uploaded exports (DELIVERY_NOTES_DIR), writable by `node`.
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
 USER node
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
