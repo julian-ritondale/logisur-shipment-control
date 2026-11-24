@@ -145,5 +145,14 @@
     }
   html {
     @apply font-sans;
+    /* Always show the scrollbar, so the layout doesn't shift between short and long pages. */
+    overflow-y: scroll;
+    }
+  /* Radix locks scrolling while a select or menu is open (react-remove-scroll-bar): it hides
+     the body's overflow and adds a right margin the size of the scrollbar it expects to
+     disappear. The scrollbar lives on <html> and stays, so that margin would only push the
+     page left; cancel it. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
     }
 }
