@@ -114,20 +114,18 @@ export class RunsShipmentsRepository {
       payload: Prisma.DbNull,
       trackingId: null,
     };
-    const { count } = await this.prisma.shipment.updateMany({
+    // One atomic statement: only a shipment no other run holds is taken.
+    const [claimed] = await this.prisma.shipment.updateManyAndReturn({
       where: {
         carrier,
         externalRef,
         status: { in: [ShipmentStatus.PENDING, ShipmentStatus.FAILED] },
       },
       data,
+      select: { id: true },
     });
-    if (count === 1) {
-      const { id } = await this.prisma.shipment.findUniqueOrThrow({
-        where: { carrier_externalRef: { carrier, externalRef } },
-        select: { id: true },
-      });
-      return id;
+    if (claimed) {
+      return claimed.id;
     }
     try {
       const { id } = await this.prisma.shipment.create({
