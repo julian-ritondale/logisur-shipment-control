@@ -10,3 +10,4 @@ Significant decisions for this project are recorded here, one per file, using th
 | --- | --- | --- |
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
 | [0002](0002-initial-stack-and-repository-layout.md) | Initial stack and repository layout | Accepted |
+| [0004](0004-delivery-notes-export-storage.md) | Storage for uploaded delivery notes exports | Accepted |
