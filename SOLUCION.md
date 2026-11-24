@@ -75,19 +75,22 @@ Si se vuelve a correr, los mismos 20 cuentan como **enviados** (el sistema ya lo
 
 ## Organización del código
 
-El backend está organizado por funcionalidad, en `backend/src/modules/`. Cada paquete tiene su controlador, servicio, repositorio y DTOs, y solo los repositorios hablan con la base.
+El backend está organizado por funcionalidad, en `backend/src/modules/`: **un paquete por recurso REST**, con todas sus operaciones (`POST`, `GET`, ...) juntas. Cada paquete tiene su controlador, servicio, repositorio, mapper y DTOs, todos con el nombre del paquete (`runs.controller.ts`, `runs.service.ts`, ...), y solo los repositorios hablan con la base.
 
 | Paquete | Qué hace |
 | --- | --- |
-| `delivery-notes` | Exportaciones y remitos: los sube, los guarda y los lee. Contiene el pipeline (`pipeline/`), los tipos (`types/`) y los esquemas Zod (`schemas/`). |
-| `runs` | Ejecuta el pipeline sobre una exportación, y los reintentos. Guarda el avance de cada envío. |
-| `reports` | Lectura de corridas e intentos. |
+| `exports` | `/exports`: sube, guarda y lee las exportaciones. Contiene el lector (`reader/`) y el almacenamiento (`storage/`). |
+| `delivery-notes` | `/delivery-notes`: los remitos de cada exportación. Contiene el pipeline (`pipeline/`), los tipos (`types/`) y los esquemas Zod (`schemas/`). |
+| `runs` | `/runs`: crea corridas (ejecuta el pipeline sobre una exportación, y los reintentos), las lista y las lee con su desglose. Guarda el avance de cada envío. |
+| `attempts` | `/attempts`: qué le pasó a cada remito en cada corrida (solo lectura; los registra `runs`). |
 | `shipments` | Consulta de envíos, y su reintento (que delega en `runs`). |
 | `carriers` | Registro de transportistas, contrato del cliente y router. |
 
 Las dependencias van en un solo sentido:
 - `shipments` usa `runs`.
-- `runs` usa `delivery-notes`, `reports` y `carriers`.
+- `runs` usa `exports`, `delivery-notes` y `carriers`.
+- `exports` usa `delivery-notes` (al subir, guarda sus remitos).
+- `attempts` no depende de otros paquetes.
 
 ## El pipeline, paso a paso
 
@@ -95,7 +98,7 @@ El pipeline no es un servicio: es una **composición de piezas chicas, cada una 
 
 | Paso | Pieza | Qué hace |
 | --- | --- | --- |
-| UPLOAD | `DeliveryNotesService.upload` | Lee el archivo (array JSON de objetos, UTF-8) y guarda la exportación y **todos** sus remitos, de todos los transportistas, tal cual vinieron. Si no se puede leer: `422` y **no se guarda nada**. |
+| UPLOAD | `ExportsService.upload` | Lee el archivo (array JSON de objetos, UTF-8) y guarda la exportación y **todos** sus remitos, de todos los transportistas, tal cual vinieron. Si no se puede leer: `422` y **no se guarda nada**. |
 | NORMALIZE | `normalizer/` | Lee cada campo con su parser: texto, entero, decimal (`"145,1"` → 145.1), provincia (`Bs. As.` → Buenos Aires), servicio, transportista. Nunca falla y no adivina. |
 | FILTER | `filter/` | Filtros componibles (ver abajo). |
 | VALIDATE | `validator/` | Reglas de lo que exige el transportista. Informa **todos** los problemas juntos. |

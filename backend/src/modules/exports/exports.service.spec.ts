@@ -1,18 +1,16 @@
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
+import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service.js';
+import { ExportNotFoundError, InvalidExportError } from './exports.errors.js';
+import { ExportsRepository } from './exports.repository.js';
+import { ExportsService } from './exports.service.js';
+import { JsonExportsReaderModule } from './reader/json-exports-reader.module.js';
 import {
-  ExportNotFoundError,
-  InvalidExportError,
-} from './delivery-notes.errors.js';
-import { DeliveryNotesRepository } from './delivery-notes.repository.js';
-import { DeliveryNotesService } from './delivery-notes.service.js';
-import { JsonDeliveryNotesReaderModule } from './reader/json-delivery-notes-reader.module.js';
-import {
-  DELIVERY_NOTES_STORAGE,
-  type DeliveryNotesStorage,
-} from './storage/delivery-notes.storage.js';
+  EXPORTS_STORAGE,
+  type ExportsStorage,
+} from './storage/exports.storage.js';
 
-class InMemoryStorage implements DeliveryNotesStorage {
+class InMemoryStorage implements ExportsStorage {
   readonly files = new Map<string, Buffer>();
 
   save(content: Buffer): Promise<string> {
@@ -26,19 +24,16 @@ class InMemoryStorage implements DeliveryNotesStorage {
   }
 }
 
-describe('DeliveryNotesService', () => {
-  let service: DeliveryNotesService;
+describe('ExportsService', () => {
+  let service: ExportsService;
   let storage: InMemoryStorage;
-  const repository = {
-    saveAll: vi.fn(),
-    findExport: vi.fn(),
-    deliveryNotesOf: vi.fn(),
-  };
+  const repository = { find: vi.fn() };
+  const deliveryNotes = { saveAll: vi.fn() };
 
   beforeEach(async () => {
     storage = new InMemoryStorage();
     vi.resetAllMocks();
-    repository.findExport.mockImplementation((id: string) =>
+    repository.find.mockImplementation((id: string) =>
       Promise.resolve(
         storage.files.has(id)
           ? { id, uploadedAt: new Date(), deliveryNoteCount: 1 }
@@ -46,14 +41,15 @@ describe('DeliveryNotesService', () => {
       ),
     );
     const module = await Test.createTestingModule({
-      imports: [JsonDeliveryNotesReaderModule],
+      imports: [JsonExportsReaderModule],
       providers: [
-        DeliveryNotesService,
-        { provide: DELIVERY_NOTES_STORAGE, useValue: storage },
-        { provide: DeliveryNotesRepository, useValue: repository },
+        ExportsService,
+        { provide: EXPORTS_STORAGE, useValue: storage },
+        { provide: ExportsRepository, useValue: repository },
+        { provide: DeliveryNotesService, useValue: deliveryNotes },
       ],
     }).compile();
-    service = module.get(DeliveryNotesService);
+    service = module.get(ExportsService);
   });
 
   describe('Scenario: uploading an export', () => {
@@ -64,14 +60,14 @@ describe('DeliveryNotesService', () => {
     it('Given a valid export, when it is uploaded, then the file and every delivery note in it are stored', async () => {
       const summary = await service.upload(content);
       expect(storage.files.get(summary.id)).toEqual(content);
-      expect(repository.saveAll).toHaveBeenCalledWith(summary.id, [
+      expect(deliveryNotes.saveAll).toHaveBeenCalledWith(summary.id, [
         { nro_remito: 'R-1', transportista: 'EXPRESO ANDINO ' },
       ]);
     });
 
     it('Given an uploaded export, when its content is asked for, then it is the same bytes', async () => {
       const { id } = await service.upload(content);
-      await expect(service.exportContent(id)).resolves.toEqual(content);
+      await expect(service.content(id)).resolves.toEqual(content);
     });
 
     it('Given content that is not an export, when it is uploaded, then it fails and nothing is stored', async () => {
@@ -79,7 +75,7 @@ describe('DeliveryNotesService', () => {
         service.upload(Buffer.from('{"nro_remito": "R-1"}')),
       ).rejects.toThrow(InvalidExportError);
       expect(storage.files.size).toBe(0);
-      expect(repository.saveAll).not.toHaveBeenCalled();
+      expect(deliveryNotes.saveAll).not.toHaveBeenCalled();
     });
   });
 
@@ -87,9 +83,8 @@ describe('DeliveryNotesService', () => {
     const id = randomUUID();
 
     it.each([
-      ['its summary', () => service.getExport(id)],
-      ['its content', () => service.exportContent(id)],
-      ['its delivery notes', () => service.deliveryNotesOf(id)],
+      ['its summary', () => service.get(id)],
+      ['its content', () => service.content(id)],
     ])(
       'Given an unknown export id, when %s is asked for, then it fails as not found',
       async (_case, call) => {

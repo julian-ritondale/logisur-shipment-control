@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { pageArgs } from '../../common/dto/page.response.dto.js';
 import {
   AttemptOutcome,
+  PipelineStep,
   Prisma,
+  Run,
   RunKind,
   RunStatus,
 } from '../../generated/prisma/client.js';
@@ -26,6 +29,21 @@ export interface AttemptRecord {
   fromStep: Step;
   reachedStep: Step;
   result: AttemptResult;
+}
+
+export interface RunFilters {
+  status?: RunStatus;
+  kind?: RunKind;
+  exportId?: string;
+  carrier?: string;
+}
+
+/** How many of a run's attempts ended each way. */
+export interface BreakdownRow {
+  outcome: AttemptOutcome;
+  reachedStep: PipelineStep;
+  reasonCode: string | null;
+  count: number;
 }
 
 export interface NewRun {
@@ -72,11 +90,39 @@ export class RunsRepository {
     return id;
   }
 
-  async findById(id: string) {
-    return this.prisma.run.findUnique({
-      where: { id },
-      select: { id: true, exportId: true },
+  find(id: string): Promise<Run | null> {
+    return this.prisma.run.findUnique({ where: { id } });
+  }
+
+  list(
+    filters: RunFilters,
+    after: string | undefined,
+    limit: number,
+  ): Promise<Run[]> {
+    return this.prisma.run.findMany({
+      where: filters,
+      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+      ...pageArgs(after, limit),
     });
+  }
+
+  async breakdown(runId: string): Promise<BreakdownRow[]> {
+    const groups = await this.prisma.attempt.groupBy({
+      by: ['outcome', 'reachedStep', 'reasonCode'],
+      where: { runId },
+      _count: { _all: true },
+      orderBy: [
+        { outcome: 'asc' },
+        { reachedStep: 'asc' },
+        { reasonCode: 'asc' },
+      ],
+    });
+    return groups.map(({ outcome, reachedStep, reasonCode, _count }) => ({
+      outcome,
+      reachedStep,
+      reasonCode,
+      count: _count._all,
+    }));
   }
 
   async recordAttempt({ result, ...attempt }: AttemptRecord): Promise<void> {

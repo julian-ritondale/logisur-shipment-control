@@ -14,3 +14,4 @@ Significant decisions for this project are recorded here, one per file, using th
 | [0004](0004-delivery-notes-export-storage.md) | Storage for uploaded delivery notes exports | Accepted |
 | [0005](0005-functional-pipeline-persistence-and-idempotent-delivery.md) | Functional pipeline, per-step persistence and idempotent delivery | Accepted |
 | [0007](0007-generic-api-client-and-carrier-integration-layout.md) | Generic API client and carrier integration layout | Accepted |
+| [0008](0008-one-backend-module-per-rest-resource.md) | One backend module per REST resource | Accepted |

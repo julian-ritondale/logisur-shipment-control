@@ -13,11 +13,11 @@ export class DeliveryNotesController {
   list(
     @Query() query: ListDeliveryNotesRequestDto,
   ): Promise<PageResponseDto<DeliveryNoteResponseDto>> {
-    return this.deliveryNotes.listDeliveryNotes(query);
+    return this.deliveryNotes.list(query);
   }
 
   @Get(':id')
   findOne(@Param() { id }: IdRequestDto): Promise<DeliveryNoteResponseDto> {
-    return this.deliveryNotes.getDeliveryNote(id);
+    return this.deliveryNotes.get(id);
   }
 }

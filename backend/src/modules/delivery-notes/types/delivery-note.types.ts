@@ -15,12 +15,6 @@ export interface StoredDeliveryNote {
   raw: RawDeliveryNote;
 }
 
-export interface ExportSummary {
-  id: string;
-  uploadedAt: Date;
-  deliveryNoteCount: number;
-}
-
 /** A remito after NORMALIZE: every field read, nothing judged yet. */
 export interface NormalizedDeliveryNote {
   number: Field<string>;

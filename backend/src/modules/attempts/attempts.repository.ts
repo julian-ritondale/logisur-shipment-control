@@ -4,18 +4,8 @@ import type {
   AttemptOutcome,
   PipelineStep,
   Prisma,
-  Run,
-  RunKind,
-  RunStatus,
 } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
-
-export interface RunFilters {
-  status?: RunStatus;
-  kind?: RunKind;
-  exportId?: string;
-  carrier?: string;
-}
 
 export interface AttemptFilters {
   runId?: string;
@@ -35,53 +25,12 @@ export type AttemptRow = Prisma.AttemptGetPayload<{
   include: typeof ATTEMPT_DETAILS;
 }>;
 
-export interface BreakdownRow {
-  outcome: AttemptOutcome;
-  reachedStep: PipelineStep;
-  reasonCode: string | null;
-  count: number;
-}
-
+/** Reads attempts. Runs record them, through their own repository. */
 @Injectable()
-export class ReportsRepository {
+export class AttemptsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findRun(id: string): Promise<Run | null> {
-    return this.prisma.run.findUnique({ where: { id } });
-  }
-
-  listRuns(
-    filters: RunFilters,
-    after: string | undefined,
-    limit: number,
-  ): Promise<Run[]> {
-    return this.prisma.run.findMany({
-      where: filters,
-      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-      ...pageArgs(after, limit),
-    });
-  }
-
-  async breakdown(runId: string): Promise<BreakdownRow[]> {
-    const groups = await this.prisma.attempt.groupBy({
-      by: ['outcome', 'reachedStep', 'reasonCode'],
-      where: { runId },
-      _count: { _all: true },
-      orderBy: [
-        { outcome: 'asc' },
-        { reachedStep: 'asc' },
-        { reasonCode: 'asc' },
-      ],
-    });
-    return groups.map(({ outcome, reachedStep, reasonCode, _count }) => ({
-      outcome,
-      reachedStep,
-      reasonCode,
-      count: _count._all,
-    }));
-  }
-
-  listAttempts(
+  list(
     { deliveryNoteNumber, step, ...filters }: AttemptFilters,
     after: string | undefined,
     limit: number,

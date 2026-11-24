@@ -7,7 +7,7 @@ import {
   ShipmentStatus,
   type Shipment,
 } from '../../generated/prisma/client.js';
-import type { RunResponseDto } from '../reports/dto/run.response.dto.js';
+import type { RunResponseDto } from '../runs/dto/run.response.dto.js';
 import { RunsService } from '../runs/runs.service.js';
 import type { ListShipmentsRequestDto } from './dto/list-shipments.request.dto.js';
 import type {

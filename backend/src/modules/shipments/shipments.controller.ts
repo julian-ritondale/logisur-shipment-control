@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { IdRequestDto } from '../../common/dto/id.request.dto.js';
 import type { PageResponseDto } from '../../common/dto/page.response.dto.js';
-import type { RunResponseDto } from '../reports/dto/run.response.dto.js';
+import type { RunResponseDto } from '../runs/dto/run.response.dto.js';
 import { ListShipmentsRequestDto } from './dto/list-shipments.request.dto.js';
 import type {
   ShipmentDetailResponseDto,

@@ -1,5 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  toPage,
+  type PageResponseDto,
+} from '../../common/dto/page.response.dto.js';
 import type { JsonObject } from '../../common/types/json.js';
 import { valueOf } from '../../common/types/field.js';
 import { RunKind } from '../../generated/prisma/client.js';
@@ -32,13 +36,22 @@ import {
   Step,
   type Failure,
 } from '../delivery-notes/pipeline/types/pipeline.types.js';
-import type { RunResponseDto } from '../reports/dto/run.response.dto.js';
-import { ReportsService } from '../reports/reports.service.js';
+import { ExportsService } from '../exports/exports.service.js';
+import type { ListRunsRequestDto } from './dto/list-runs.request.dto.js';
+import type {
+  RunResponseDto,
+  RunSummaryResponseDto,
+} from './dto/run.response.dto.js';
 import {
-  RunShipmentsRepository,
+  RunsShipmentsRepository,
   type RetryableShipment,
-} from './run-shipments.repository.js';
+} from './runs-shipments.repository.js';
 import { NothingToRetryError, RunNotFoundError } from './runs.errors.js';
+import {
+  fromListRunsRequestDto,
+  toRunDto,
+  toRunSummaryDto,
+} from './runs.mapper.js';
 import { RunsRepository, type AttemptResult } from './runs.repository.js';
 
 interface Work {
@@ -70,10 +83,10 @@ export class RunsService {
   private readonly carrier: Carrier;
 
   constructor(
+    private readonly exports: ExportsService,
     private readonly deliveryNotes: DeliveryNotesService,
     private readonly runs: RunsRepository,
-    private readonly shipments: RunShipmentsRepository,
-    private readonly reports: ReportsService,
+    private readonly shipments: RunsShipmentsRepository,
     @Inject(CARRIER_ROUTER) private readonly router: CarrierRouter,
     config: ConfigService,
   ) {
@@ -81,7 +94,8 @@ export class RunsService {
   }
 
   async start(exportId: string): Promise<RunResponseDto> {
-    const deliveryNotes = await this.deliveryNotes.deliveryNotesOf(exportId);
+    await this.exports.get(exportId);
+    const deliveryNotes = await this.deliveryNotes.ofExport(exportId);
     const runId = await this.runs.create({
       exportId,
       carrier: this.carrier,
@@ -102,11 +116,30 @@ export class RunsService {
         await this.startShipment(runId, pipeline, candidate);
       }
     });
-    return this.reports.getRun(runId);
+    return this.get(runId);
+  }
+
+  async get(id: string): Promise<RunResponseDto> {
+    const run = await this.runs.find(id);
+    if (!run) {
+      throw new RunNotFoundError(id);
+    }
+    return toRunDto(run, await this.runs.breakdown(id));
+  }
+
+  async list(
+    request: ListRunsRequestDto,
+  ): Promise<PageResponseDto<RunSummaryResponseDto>> {
+    const { filters, after, limit } = fromListRunsRequestDto(request);
+    return toPage(
+      await this.runs.list(filters, after, limit),
+      limit,
+      toRunSummaryDto,
+    );
   }
 
   async retryRun(runId: string): Promise<RunResponseDto> {
-    const run = await this.runs.findById(runId);
+    const run = await this.runs.find(runId);
     if (!run) {
       throw new RunNotFoundError(runId);
     }
@@ -178,7 +211,7 @@ export class RunsService {
         });
       }
     });
-    return this.reports.getRun(runId);
+    return this.get(runId);
   }
 
   private async execute(

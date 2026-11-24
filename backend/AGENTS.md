@@ -52,15 +52,17 @@ src/
   integrations/<carrier>/   one carrier: its API client, its CarrierClient adapter and its module
   modules/
     carriers/               carrier registry (a table of names and spellings), CarrierClient contract, CarrierRouter
-    delivery-notes/         exports and delivery notes; types/, schemas/ (Zod) and pipeline/ (the steps)
-    runs/                   execute the pipeline over an export, and retries; saves each shipment's progress
-    reports/                read runs and attempts
-    shipments/              read shipments, and retry one (through runs)
+    exports/                /exports: upload, store and read exports; reader/ and storage/
+    delivery-notes/         /delivery-notes; types/, schemas/ (Zod) and pipeline/ (the steps)
+    runs/                   /runs: create (execute the pipeline, and retries), list and read runs; saves each shipment's progress
+    attempts/               /attempts: what happened to each delivery note in each run (read-only)
+    shipments/              /shipments: read shipments, and retry one (through runs)
 ```
 
-- **Each package under `modules/` owns its controller, service, repository, DTOs and errors.** It imports only the files it uses.
+- **One package per REST resource** (ADR 0008). Every operation on a resource (`POST`, `GET`, `PUT`, `DELETE`, and sub-resources such as `/runs/:id/retries`) lives in that resource's package, never split across packages by reading vs. writing.
+- **Each package under `modules/` owns its controller, service, repository, mapper, DTOs and errors, all named after the package** (`runs.controller.ts`, `RunsService`, `runs.mapper.ts`, `runs.errors.ts`, ...): one controller per package. A second repository is allowed when the package writes another resource's table, and is still prefixed (`runs-shipments.repository.ts`). It imports only the files it uses.
 - **A package that touches the database does it through its own repository.** Services hold the rules and never call Prisma directly.
-- **Dependencies point one way:** `shipments → runs → delivery-notes, reports, carriers`. `runs` writes shipment progress through its own `RunShipmentsRepository`, so it never needs the `shipments` module.
+- **Dependencies point one way:** `shipments → runs → exports → delivery-notes`, and `runs → delivery-notes, carriers`. `runs` writes shipment progress and attempts through its own repositories (`RunsShipmentsRepository`, `RunsRepository`), so it never needs the `shipments` or `attempts` modules.
 
 ## REST API
 
@@ -81,12 +83,12 @@ src/
   Keep them in the feature's `dto/` folder. Shared ones (`IdRequestDto`, `PageRequestDto`, `PageResponseDto`) are in `common/dto/`.
 - **Mappers.** Each package converts between DTOs and its own types in `<feature>.mapper.ts`, as plain functions: `toXxxDto(row)` builds a response DTO, and `fromXxxRequestDto(dto)` turns a request DTO into what the repository takes (listings use `fromPageRequestDto` to split off the cursor). Services call the mapper and never build or pick apart DTOs inline.
 - **Swappable parts are interfaces injected by token.** A dependency that could have several implementations is a small TypeScript `interface` plus a `Symbol` token, both in the same file:
-  - where exports are stored (`DELIVERY_NOTES_STORAGE`);
-  - how they are read (`DELIVERY_NOTES_READER`);
+  - where exports are stored (`EXPORTS_STORAGE`);
+  - how they are read (`EXPORTS_READER`);
   - how a carrier is reached (`CARRIER_ROUTER`).
 
   The service injects it with `@Inject(TOKEN)` and imports the interface with `import type`, never an implementation class. Keep these interfaces to the few methods the service needs.
-- **One module per implementation, picked through imports.** Each implementation has its own module that provides and exports the token, for example `PrismaDeliveryNotesStorageModule` and `JsonDeliveryNotesReaderModule`. The feature module selects them in `imports`, so switching implementations is a one-line change. In tests, provide the token with a fake (`{ provide: TOKEN, useValue: ... }`) or use `.overrideProvider(TOKEN)`.
+- **One module per implementation, picked through imports.** Each implementation has its own module that provides and exports the token, for example `PrismaExportsStorageModule` and `JsonExportsReaderModule`. The feature module selects them in `imports`, so switching implementations is a one-line change. In tests, provide the token with a fake (`{ provide: TOKEN, useValue: ... }`) or use `.overrideProvider(TOKEN)`.
 - **Errors.** Services throw feature errors that extend an `ApplicationError` kind, each in the package's `*.errors.ts`. `ApplicationErrorFilter` maps the kinds to HTTP statuses, so unit tests assert on these classes, not on HTTP exceptions:
   - `NotFoundError` → 404
   - `UnprocessableContentError` → 422
@@ -108,7 +110,7 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
   | DELIVER | `deliverer/` | `deliverer(carrier)` and `fromDeliveryOutcome` |
 
 - **Stages.** VALIDATE, MAP and DELIVER are `Stage`s: `{ step, run(input) → Result }`, defined in `stage.ts`. `runStages` runs them in order from any step and calls back after each one; that callback is where the caller saves the output. A retry resumes by starting at a later step.
-- **Executing it** is `RunsService`'s job, in the runs module. It builds the pipeline for a run, runs it, and persists through `RunsRepository` and `RunShipmentsRepository`. Business rules belong in the helpers, never in the service.
+- **Executing it** is `RunsService`'s job, in the runs module. It builds the pipeline for a run, runs it, and persists through `RunsRepository` and `RunsShipmentsRepository`. Business rules belong in the helpers, never in the service.
 - **To add or reorder a filter or a stage,** write the helper and change `deliveryNotesPipeline()`. Test the helper on its own, and the composition in `delivery-notes.pipeline.spec.ts`, with no database.
 - **Reasons:** every way a remito can stop is a `ReasonCode` in the catalogue in `pipeline/reasons.ts`, with an English message LogiSur can act on. Never put technical text (stack traces, HTTP bodies) in a message; that belongs in `detail`.
 - **Strict types, tables, Zod:**

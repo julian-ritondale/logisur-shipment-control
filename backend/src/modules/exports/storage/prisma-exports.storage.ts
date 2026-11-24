@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { PrismaService } from '../../../prisma/prisma.service.js';
-import type { DeliveryNotesStorage } from './delivery-notes.storage.js';
+import type { ExportsStorage } from './exports.storage.js';
 
-export class PrismaDeliveryNotesStorage implements DeliveryNotesStorage {
+export class PrismaExportsStorage implements ExportsStorage {
   constructor(private readonly prisma: PrismaService) {}
 
   async save(content: Buffer): Promise<string> {

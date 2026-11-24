@@ -1,7 +1,7 @@
-import { InvalidExportError } from '../delivery-notes.errors.js';
-import { EXPORT_SCHEMA } from '../schemas/delivery-note.schemas.js';
-import type { RawDeliveryNote } from '../types/delivery-note.types.js';
-import type { DeliveryNotesReader } from './delivery-notes.reader.js';
+import { InvalidExportError } from '../exports.errors.js';
+import { EXPORT_SCHEMA } from '../../delivery-notes/schemas/delivery-note.schemas.js';
+import type { RawDeliveryNote } from '../../delivery-notes/types/delivery-note.types.js';
+import type { ExportsReader } from './exports.reader.js';
 
 const ERRORS = {
   NOT_UTF8: 'The export is not valid UTF-8',
@@ -13,7 +13,7 @@ const ERRORS = {
 };
 
 /** LogiSur's export format: a UTF-8 JSON array of objects. */
-export class JsonDeliveryNotesReader implements DeliveryNotesReader {
+export class JsonExportsReader implements ExportsReader {
   read(content: Buffer): RawDeliveryNote[] {
     const json = parseJson(decode(content));
     const parsed = EXPORT_SCHEMA.safeParse(json);

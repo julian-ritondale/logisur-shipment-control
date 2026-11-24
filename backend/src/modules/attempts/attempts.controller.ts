@@ -1,17 +1,18 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import type { PageResponseDto } from '../../common/dto/page.response.dto.js';
+import { AttemptsService } from './attempts.service.js';
 import type { AttemptResponseDto } from './dto/attempt.response.dto.js';
 import { ListAttemptsRequestDto } from './dto/list-attempts.request.dto.js';
-import { ReportsService } from './reports.service.js';
 
+/** What happened to each delivery note in each run. Read-only: runs record them. */
 @Controller('attempts')
 export class AttemptsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(private readonly attempts: AttemptsService) {}
 
   @Get()
   list(
     @Query() query: ListAttemptsRequestDto,
   ): Promise<PageResponseDto<AttemptResponseDto>> {
-    return this.reports.listAttempts(query);
+    return this.attempts.list(query);
   }
 }

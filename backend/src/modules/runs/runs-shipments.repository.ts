@@ -62,7 +62,7 @@ const toRetryable = (
 
 /** How a run moves shipments along: claiming them, and saving each step's output. */
 @Injectable()
-export class RunShipmentsRepository {
+export class RunsShipmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async deliveredByNumber(

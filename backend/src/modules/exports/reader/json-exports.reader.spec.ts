@@ -1,11 +1,11 @@
-import { InvalidExportError } from '../delivery-notes.errors.js';
-import { JsonDeliveryNotesReader } from './json-delivery-notes.reader.js';
+import { InvalidExportError } from '../exports.errors.js';
+import { JsonExportsReader } from './json-exports.reader.js';
 
 const BOM = '\uFEFF';
-const reader = new JsonDeliveryNotesReader();
+const reader = new JsonExportsReader();
 const read = (content: string | Buffer) => reader.read(Buffer.from(content));
 
-describe('JsonDeliveryNotesReader', () => {
+describe('JsonExportsReader', () => {
   describe('Scenario: reading a valid export', () => {
     it('Given "[]", when it is read, then there are no delivery notes', () => {
       expect(read('[]')).toEqual([]);
