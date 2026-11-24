@@ -23,6 +23,7 @@ const PROVINCES = z.object({ provinces: z.array(z.string()) });
 const SHIPMENT = z.object({ tracking_id: z.string() });
 /** `POST /v1/shipments` → 422. */
 const VALIDATION_ERROR = z.object({
+  error: z.string().optional(),
   details: z
     .array(z.object({ field: z.string(), message: z.string() }))
     .default([]),
@@ -75,15 +76,24 @@ const created = (body: unknown): Try => {
     : transient({ reason: 'no tracking_id in the answer' });
 };
 
-const rejected = (body: unknown): Try => ({
-  status: DeliveryStatus.REJECTED,
-  rejections: (VALIDATION_ERROR.safeParse(body).data?.details ?? []).map(
-    ({ field, message }): CarrierRejection =>
-      Object.hasOwn(FIELDS, field)
-        ? { field: FIELDS[field], message }
-        : { message: `${field}: ${message}` },
-  ),
-});
+/** Without details, the rejection still says something: the API's `error`, or that it gave no reason. */
+const NO_DETAILS = 'no details given';
+
+const rejected = (body: unknown): Try => {
+  const { error, details } = VALIDATION_ERROR.safeParse(body).data ?? {
+    details: [],
+  };
+  const rejections = details.map(({ field, message }): CarrierRejection =>
+    Object.hasOwn(FIELDS, field)
+      ? { field: FIELDS[field], message }
+      : { message: `${field}: ${message}` },
+  );
+  return {
+    status: DeliveryStatus.REJECTED,
+    rejections:
+      rejections.length > 0 ? rejections : [{ message: error ?? NO_DETAILS }],
+  };
+};
 
 /** `POST /v1/shipments` answers; anything else (500, 503, ...) is transient. 409 means it already exists: delivered. */
 const CREATE_ANSWERS: Partial<Record<number, (body: unknown) => Try>> = {

@@ -153,6 +153,24 @@ describe('ExpresoAndinoClient', () => {
       expect(calls).toHaveLength(1);
     });
 
+    it.each([
+      [{ error: 'validation_error' }, 'validation_error'],
+      ['Unprocessable', 'no details given'],
+    ])(
+      'Given a 422 without details (%j), when delivered, then it is REJECTED with a message rather than no reason',
+      async (body, message) => {
+        const { fetchFn } = scriptedFetch(
+          typeof body === 'string'
+            ? new Response(body, { status: 422 })
+            : json(422, body),
+        );
+        await expect(client(fetchFn).deliver(request)).resolves.toEqual({
+          status: DeliveryStatus.REJECTED,
+          rejections: [{ message }],
+        });
+      },
+    );
+
     it('Given the API answers 401, when delivered, then it is UNAUTHORIZED and not retried', async () => {
       const { fetchFn, calls } = scriptedFetch(
         json(401, { error: 'unauthorized' }),
