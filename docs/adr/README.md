@@ -13,6 +13,7 @@ Significant decisions for this project are recorded here, one per file, using th
 | [0003](0003-frontend-ui-stack-tailwind-and-shadcn.md) | Frontend UI stack: Tailwind CSS and shadcn/ui | Accepted |
 | [0004](0004-delivery-notes-export-storage.md) | Storage for uploaded delivery notes exports | Accepted |
 | [0005](0005-functional-pipeline-persistence-and-idempotent-delivery.md) | Functional pipeline, per-step persistence and idempotent delivery | Accepted |
+| [0006](0006-frontend-routing-data-fetching-and-ui-language.md) | Frontend routing, data fetching and UI language | Accepted |
 | [0007](0007-generic-api-client-and-carrier-integration-layout.md) | Generic API client and carrier integration layout | Accepted |
 | [0008](0008-one-backend-module-per-rest-resource.md) | One backend module per REST resource | Accepted |
 | [0009](0009-carrier-integrations-as-client-and-mapper.md) | Carrier integrations as a client and a mapper | Accepted |

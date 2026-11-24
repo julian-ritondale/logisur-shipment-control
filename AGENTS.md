@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Purpose
 
-LogiSur exports its daily delivery notes (*remitos*) as JSON. This system takes that export, keeps the remitos assigned to the configured carrier (today **Expreso Andino**, the only one with an API), normalizes and validates them, and loads them into the carrier's shipments API reliably: no duplicates, retries on transient failures, and a clear report of what was loaded, skipped or rejected. Domain docs and data are in Spanish, while code, stored values and UI messages are in English. **[`SOLUCION.md`](SOLUCION.md) (Spanish) explains the pipeline end to end**; read it before changing it.
+LogiSur exports its daily delivery notes (*remitos*) as JSON. This system takes that export, keeps the remitos assigned to the configured carrier (today **Expreso Andino**, the only one with an API), normalizes and validates them, and loads them into the carrier's shipments API reliably: no duplicates, retries on transient failures, and a clear report of what was loaded, skipped or rejected. Domain docs, data and the UI are in Spanish, while code, stored values and backend messages are in English (the frontend translates codes in `frontend/src/lib/labels.ts`). **[`SOLUCION.md`](SOLUCION.md) (Spanish) explains the pipeline end to end**; read it before changing it.
 
 ## Repository layout
 
