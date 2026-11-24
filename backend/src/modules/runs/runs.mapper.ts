@@ -11,7 +11,6 @@ import type {
   RunSummaryResponseDto,
 } from './dto/run.response.dto.js';
 import type { BreakdownRow, RunFilters } from './runs.repository.js';
-import { type Cause } from '../../common/types/pipeline.types.js';
 
 export const fromListRunsRequestDto = (
   dto: ListRunsRequestDto,
@@ -43,7 +42,7 @@ export const toRunBreakdownDto = ({
 }: BreakdownRow): RunBreakdownResponseDto => ({
   outcome,
   step: reachedStep,
-  cause: (cause as Cause | null) ?? undefined,
+  cause: cause ?? undefined,
   count,
 });
 

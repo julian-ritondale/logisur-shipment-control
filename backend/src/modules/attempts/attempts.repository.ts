@@ -5,6 +5,7 @@ import type {
   PipelineStep,
   Prisma,
 } from '../../generated/prisma/client.js';
+import type { Cause } from '../../common/types/pipeline.types.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 export interface AttemptFilters {
@@ -12,7 +13,7 @@ export interface AttemptFilters {
   shipmentId?: string;
   outcome?: AttemptOutcome;
   step?: PipelineStep;
-  cause?: string;
+  cause?: Cause;
   deliveryNoteNumber?: string;
 }
 

@@ -3,7 +3,6 @@ import { pageArgs } from '../../common/dto/page.response.dto.js';
 import {
   AttemptOutcome,
   PipelineStep,
-  Prisma,
   Run,
   RunKind,
   RunStatus,
@@ -13,6 +12,7 @@ import { type Failure } from './pipeline/types/pipeline.types.js';
 import type { Carrier } from '../carriers/carrier-registry.js';
 import {
   Outcome,
+  type Cause,
   type Reason,
   type Step,
 } from '../../common/types/pipeline.types.js';
@@ -42,7 +42,7 @@ export interface RunFilters {
 export interface BreakdownRow {
   outcome: AttemptOutcome;
   reachedStep: PipelineStep;
-  cause: string | null;
+  cause: Cause | null;
   count: number;
 }
 
@@ -53,8 +53,6 @@ export interface NewRun {
   parentRunId?: string;
   total: number;
 }
-
-const json = (value: object) => value as Prisma.InputJsonObject;
 
 const attemptColumns = (result: AttemptResult) => {
   switch (result.outcome) {
@@ -71,8 +69,8 @@ const attemptColumns = (result: AttemptResult) => {
         failedStep: step,
         cause,
         reasonMessage: message,
-        ...(issues && { issues: issues.map(json) }),
-        ...(detail && { technicalDetail: json(detail) }),
+        ...(issues && { issues }),
+        ...(detail && { technicalDetail: detail }),
       };
     }
   }

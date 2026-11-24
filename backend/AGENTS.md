@@ -146,6 +146,7 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
 
 - **Schema** lives in `prisma/`, and the CLI config is `prisma7.config.ts`, which reads `DATABASE_URL` from `.env`. **There are no migrations yet** (ADR 0011): `prisma/migrations/` stays empty until the schema settles and gets one `init` migration. Until then, after editing the schema, run `npm run prisma:push` (applies it to your database, dropping what no longer fits) and `npm run prisma:generate`. The generated client goes to `src/generated/prisma/`, which is git-ignored, so run `npm run prisma:generate` after a fresh clone. `npm run build` does that for you.
 - **`npm` holds back some packages' install scripts** (`npm install-scripts ls`). Prisma 7 works without them.
+- **Json columns (and `cause`) are typed** by `prisma-json-types-generator`: a `/// [Type]` comment on the field in `schema.prisma`, and the type in the global `PrismaJson` namespace in `src/prisma/prisma-json.types.ts`. Read and write them as their types; don't cast to or from `Prisma.InputJsonValue`/`JsonValue`. A new Json column gets its own `/// [Type]`.
 - **Only repositories use `PrismaService`.** Import `PrismaModule` in the package's module, and import enums and model types from `src/generated/prisma/client.js`.
 - **The `nestjs-data` skill's rules apply:**
   - map unique violations (`P2002`) instead of pre-checking;

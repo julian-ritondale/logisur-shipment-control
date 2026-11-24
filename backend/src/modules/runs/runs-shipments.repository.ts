@@ -19,8 +19,6 @@ const isUniqueViolation = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError &&
   error.code === UNIQUE_VIOLATION;
 
-const json = (value: object) => value as Prisma.InputJsonObject;
-
 /** A failed shipment, with what a retry needs to resume it. */
 export interface RetryableShipment {
   id: string;
@@ -56,8 +54,9 @@ const toRetryable = (
   deliveryNoteId: row.deliveryNoteId,
   exportId: row.deliveryNote.exportId,
   failedStep: row.failedStep ?? undefined,
-  normalized: row.normalized as unknown as NormalizedDeliveryNote,
-  payload: (row.payload as JsonObject | null) ?? undefined,
+  // `claim` stores it before a shipment can fail, so a retryable one always has it.
+  normalized: row.normalized!,
+  payload: row.payload ?? undefined,
   lastRunId: row.attempts[0]?.runId,
 });
 
@@ -106,7 +105,7 @@ export class RunsShipmentsRepository {
     const data = {
       status: ShipmentStatus.PROCESSING,
       deliveryNoteId,
-      normalized: json(normalized),
+      normalized,
       contentHash,
       lastCompletedStep: PipelineStep.FILTER,
       failedStep: null,
@@ -188,7 +187,7 @@ export class RunsShipmentsRepository {
       where: { id },
       data: {
         lastCompletedStep: step,
-        ...(payload && { payload: json(payload) }),
+        ...(payload && { payload }),
       },
     });
   }

@@ -4,6 +4,14 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  // ESM (nodenext): relative imports need ".js". Explicit so prisma-json-types-generator uses it too.
+  importFileExtension = "js"
+}
+
+/// Types the Json columns (and `cause`) with the `/// [Type]` comments below;
+/// the types are declared in `src/prisma/prisma-json.types.ts`.
+generator json {
+  provider = "prisma-json-types-generator"
 }
 
 datasource db {
@@ -75,6 +83,7 @@ model DeliveryNote {
   number   String?
   /// The carrier `transportista` names, when it is a known one. For queries.
   carrier  String?
+  /// [RawDeliveryNote]
   raw      Json
 
   export    DeliveryNotesExport @relation(fields: [exportId], references: [id], onDelete: Cascade)
@@ -125,13 +134,16 @@ model Shipment {
   status            ShipmentStatus @default(PENDING)
   lastCompletedStep PipelineStep?  @map("last_completed_step")
   failedStep        PipelineStep?  @map("failed_step")
+  /// [Cause]
   cause             String?
   reasonMessage     String?        @map("reason_message")
   /// Output of NORMALIZE.
+  /// [NormalizedDeliveryNote]
   normalized        Json?
   /// Hash of `normalized`: detects the same remito number re-sent with different data.
   contentHash       String?        @map("content_hash")
   /// Output of MAP: the request sent to the carrier.
+  /// [ShipmentRequest]
   payload           Json?
   /// Output of DELIVER.
   trackingId        String?        @map("tracking_id")
@@ -164,12 +176,15 @@ model Attempt {
   reachedStep     PipelineStep   @map("reached_step")
   outcome         AttemptOutcome
   failedStep      PipelineStep?  @map("failed_step")
+  /// [Cause]
   cause           String?
   reasonMessage   String?        @map("reason_message")
   /// Every problem found, when VALIDATE found more than one.
+  /// [Issues]
   issues          Json?
   trackingId      String?        @map("tracking_id")
   /// Technical context for support (HTTP status, carrier error body, ...).
+  /// [TechnicalDetail]
   technicalDetail Json?          @map("technical_detail")
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
 

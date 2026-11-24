@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { pageArgs } from '../../common/dto/page.response.dto.js';
 import { valueOf } from '../../common/types/field.js';
-import type { DeliveryNote, Prisma } from '../../generated/prisma/client.js';
+import type { DeliveryNote } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { isCarrier, resolveCarrier } from '../carriers/carrier-registry.js';
 import { TEXT_SCHEMA } from './schemas/delivery-note.schemas.js';
@@ -22,7 +22,7 @@ const toStored = (row: DeliveryNote): StoredDeliveryNote => ({
   position: row.position,
   number: row.number ?? undefined,
   carrier: row.carrier && isCarrier(row.carrier) ? row.carrier : undefined,
-  raw: row.raw as RawDeliveryNote,
+  raw: row.raw,
 });
 
 @Injectable()
@@ -39,7 +39,7 @@ export class DeliveryNotesRepository {
         position,
         number: TEXT_SCHEMA.safeParse(raw.nro_remito).data || undefined,
         carrier: valueOf(resolveCarrier(raw.transportista)),
-        raw: raw as Prisma.InputJsonObject,
+        raw,
       })),
     });
     return rows.map(toStored).sort((a, b) => a.position - b.position);

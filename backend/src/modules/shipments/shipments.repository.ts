@@ -8,6 +8,7 @@ import {
   type Prisma,
   type Shipment,
 } from '../../generated/prisma/client.js';
+import type { Cause } from '../../common/types/pipeline.types.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { Tracking } from '../carriers/carrier-client.js';
 
@@ -16,7 +17,7 @@ export interface ShipmentFilters {
   carrier?: string;
   deliveryNoteNumber?: string;
   failedStep?: PipelineStep;
-  cause?: string;
+  cause?: Cause;
   carrierStatus?: CarrierStatus;
   /** Late on `today`: past its estimated delivery and not delivered to the customer. */
   late?: { value: boolean; today: Date };
