@@ -97,7 +97,7 @@ src/
 
 ## The delivery notes pipeline (`modules/runs/pipeline/`)
 
-`delivery-notes` holds only the remito domain model (ADR 0010): its types (raw, stored, normalized, valid) and the Zod parsers for its fields. The pipeline that delivers remitos lives in `runs`, which executes it; other modules import its types (`Step`, `Outcome`, `ReasonCode`) but never run it.
+`delivery-notes` holds only the remito domain model (ADR 0010): its types (raw, stored, normalized, valid) and the Zod parsers for its fields. The pipeline that delivers remitos lives in `runs`, which executes it; its shared vocabulary (`Step`, `Outcome`, `Cause`, `Reason`) is in `common/types/pipeline.types.ts`, so other modules never import from `runs/pipeline/`.
 
 How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.md`](../SOLUCION.md). Decision: `docs/adr/0005-*.md`.
 
@@ -114,7 +114,7 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
 - **Stages.** VALIDATE, MAP and DELIVER are `Stage`s: `{ step, run(input) → Result }`, defined in `stage.ts`. `runStages` runs them in order from any step and calls back after each one; that callback is where the caller saves the output. A retry resumes by starting at a later step.
 - **Executing it** is `RunsService`'s job, in the runs module. It builds the pipeline for a run, runs it, and persists through `RunsRepository` and `RunsShipmentsRepository`. Business rules belong in the helpers, never in the service.
 - **To add or reorder a filter or a stage,** write the helper and change `deliveryNotesPipeline()`. Test the helper on its own, and the composition in `delivery-notes.pipeline.spec.ts`, with no database.
-- **Reasons:** every way a remito can stop is a `ReasonCode` in the catalogue in `pipeline/reasons.ts`, with an English message LogiSur can act on. Never put technical text (stack traces, HTTP bodies) in a message; that belongs in `detail`.
+- **Causes:** every way a remito can stop is a `Cause` (`common/types/pipeline.types.ts`), stored and answered as `cause`, with an English message LogiSur can act on in the catalogue in `pipeline/reasons.ts`. A new cause needs both: TypeScript fails until it has a message. Never put technical text (stack traces, HTTP bodies) in a message; that belongs in `detail`.
 - **Strict types, tables, Zod:**
   - Normalized fields are `Field<T>` (`VALID`, `MISSING` or `INVALID` with the raw text). Pipeline and storage types have no `null` or `unknown`, raw data is `JsonObject`, and repositories map database nulls to optional properties.
   - Parse untrusted data with Zod, not by hand: field parsers and whitelists (`lookup(table)`) in `schemas/`, rules in `validator/`, and the carrier's API responses.
@@ -136,7 +136,7 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
 
 ## Database (Prisma 7 + PostgreSQL)
 
-- **Schema and migrations** live in `prisma/`, and the CLI config is `prisma7.config.ts`, which reads `DATABASE_URL` from `.env`. After editing the schema, run `npm run prisma:migrate -- --name <change>`. The generated client goes to `src/generated/prisma/`, which is git-ignored, so run `npm run prisma:generate` after a fresh clone. `npm run build` does that for you.
+- **Schema** lives in `prisma/`, and the CLI config is `prisma7.config.ts`, which reads `DATABASE_URL` from `.env`. **There are no migrations yet** (ADR 0011): `prisma/migrations/` stays empty until the schema settles and gets one `init` migration. Until then, after editing the schema, run `npm run prisma:push` (applies it to your database, dropping what no longer fits) and `npm run prisma:generate`. The generated client goes to `src/generated/prisma/`, which is git-ignored, so run `npm run prisma:generate` after a fresh clone. `npm run build` does that for you.
 - **`npm` holds back some packages' install scripts** (`npm install-scripts ls`). Prisma 7 works without them.
 - **Only repositories use `PrismaService`.** Import `PrismaModule` in the package's module, and import enums and model types from `src/generated/prisma/client.js`.
 - **The `nestjs-data` skill's rules apply:**
@@ -145,5 +145,5 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
   - page with cursors.
 - **Tests:**
   - Unit tests need no database: the pipeline helpers are pure, and services get fakes for their tokens.
-  - E2E tests need PostgreSQL (`docker compose up -d postgres`). `test/global-setup.ts` migrates `logisur_test`, and `test/database.ts` truncates it between tests.
+  - E2E tests need PostgreSQL (`docker compose up -d postgres`). `test/global-setup.ts` recreates `logisur_test` from the schema (`prisma db push --force-reset`), and `test/database.ts` truncates it between tests.
   - Replace the carrier with `.overrideProvider(CARRIER_ROUTER)`; never call the real mock from tests.

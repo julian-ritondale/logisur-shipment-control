@@ -12,9 +12,8 @@ import type {
 import { deliveryNotesPipeline } from './delivery-notes.pipeline.js';
 import { contentHash } from './filter/content-hash.js';
 import { normalize } from './normalizer/normalize.js';
-import { ReasonCode } from './reasons.js';
 import { runStages } from './stage.js';
-import { Outcome, Step } from './types/pipeline.types.js';
+import { Cause, Outcome, Step } from '../../../common/types/pipeline.types.js';
 
 class FakeCarrier implements CarrierClient {
   readonly provinces = vi.fn(async () => ['Buenos Aires', 'Córdoba']);
@@ -139,7 +138,7 @@ describe('deliveryNotesPipeline', () => {
       });
       expect(await process(pipeline(), raw)).toMatchObject({
         ok: false,
-        failure: { step: Step.VALIDATE, code: ReasonCode.PROVINCE_NOT_SERVED },
+        failure: { step: Step.VALIDATE, cause: Cause.PROVINCE_NOT_SERVED },
       });
       expect(carrier.deliver).not.toHaveBeenCalled();
     });
@@ -152,7 +151,7 @@ describe('deliveryNotesPipeline', () => {
       await process(p, deliveryNote('R-1'));
       expect(await process(p, deliveryNote('R-2'))).toMatchObject({
         ok: false,
-        failure: { code: ReasonCode.INVALID_CARRIER_CREDENTIALS },
+        failure: { cause: Cause.INVALID_CARRIER_CREDENTIALS },
       });
       expect(carrier.deliver).toHaveBeenCalledTimes(1);
     });
@@ -165,7 +164,7 @@ describe('deliveryNotesPipeline', () => {
           ok: false,
           failure: {
             step: Step.VALIDATE,
-            code: ReasonCode.CARRIER_UNAVAILABLE,
+            cause: Cause.CARRIER_UNAVAILABLE,
           },
         });
       }
@@ -185,7 +184,7 @@ describe('deliveryNotesPipeline', () => {
         ok: false,
         failure: {
           step: Step.VALIDATE,
-          code: ReasonCode.NO_CARRIER_INTEGRATION,
+          cause: Cause.NO_CARRIER_INTEGRATION,
         },
       });
     });

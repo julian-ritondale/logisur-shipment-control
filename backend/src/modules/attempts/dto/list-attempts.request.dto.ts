@@ -1,12 +1,12 @@
 import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { PageRequestDto } from '../../../common/dto/page.request.dto.js';
-import { ReasonCode } from '../../runs/pipeline/reasons.js';
 import {
+  Cause,
   OUTCOMES,
-  STEPS,
   type Outcome,
+  STEPS,
   type Step,
-} from '../../runs/pipeline/types/pipeline.types.js';
+} from '../../../common/types/pipeline.types.js';
 
 const MAX_NUMBER_LENGTH = 100;
 
@@ -29,8 +29,8 @@ export class ListAttemptsRequestDto extends PageRequestDto {
   step?: Step;
 
   @IsOptional()
-  @IsIn(Object.values(ReasonCode))
-  reasonCode?: ReasonCode;
+  @IsIn(Object.values(Cause))
+  cause?: Cause;
 
   /** `nro_remito`. */
   @IsOptional()

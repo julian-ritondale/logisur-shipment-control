@@ -5,7 +5,6 @@ import {
 import type { JsonObject } from '../../common/types/json.js';
 import type { Shipment } from '../../generated/prisma/client.js';
 import { carrierName, isCarrier } from '../carriers/carrier-registry.js';
-import type { ReasonCode } from '../runs/pipeline/reasons.js';
 import type { NormalizedDeliveryNote } from '../delivery-notes/types/delivery-note.types.js';
 import type { ListShipmentsRequestDto } from './dto/list-shipments.request.dto.js';
 import type {
@@ -13,6 +12,7 @@ import type {
   ShipmentResponseDto,
 } from './dto/shipment.response.dto.js';
 import type { ShipmentFilters } from './shipments.repository.js';
+import { type Cause } from '../../common/types/pipeline.types.js';
 
 export const fromListShipmentsRequestDto = (
   dto: ListShipmentsRequestDto,
@@ -27,7 +27,7 @@ export const toShipmentDto = (row: Shipment): ShipmentResponseDto => ({
   status: row.status,
   lastCompletedStep: row.lastCompletedStep ?? undefined,
   failedStep: row.failedStep ?? undefined,
-  reasonCode: (row.reasonCode as ReasonCode | null) ?? undefined,
+  cause: (row.cause as Cause | null) ?? undefined,
   reason: row.reasonMessage ?? undefined,
   trackingId: row.trackingId ?? undefined,
   deliveredAt: row.deliveredAt ?? undefined,

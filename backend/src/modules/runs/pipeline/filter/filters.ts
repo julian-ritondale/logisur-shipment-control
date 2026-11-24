@@ -6,9 +6,13 @@ import {
 } from '../../../../common/types/field.js';
 import { Carrier, carrierName } from '../../../carriers/carrier-registry.js';
 import type { NormalizedDeliveryNote } from '../../../delivery-notes/types/delivery-note.types.js';
-import { reason, ReasonCode } from '../reasons.js';
-import { Outcome, type Reason } from '../types/pipeline.types.js';
+import { reason } from '../reasons.js';
 import { contentHash, stableStringify } from './content-hash.js';
+import {
+  Cause,
+  Outcome,
+  type Reason,
+} from '../../../../common/types/pipeline.types.js';
 
 export interface Candidate {
   deliveryNoteId: string;
@@ -103,16 +107,16 @@ const CARRIER_DECISIONS: Record<
   (field: Field<Carrier>) => Decision | undefined
 > = {
   WANTED: () => undefined,
-  PICKUP: () => skip(reason(ReasonCode.CUSTOMER_PICKUP)),
+  PICKUP: () => skip(reason(Cause.CUSTOMER_PICKUP)),
   OTHER: (field) =>
     skip(
-      reason(ReasonCode.OTHER_CARRIER, {
+      reason(Cause.OTHER_CARRIER, {
         carrier: carrierName(valueOf(field)!),
       }),
     ),
-  MISSING: () => stop(reason(ReasonCode.MISSING_CARRIER)),
+  MISSING: () => stop(reason(Cause.MISSING_CARRIER)),
   INVALID: (field) =>
-    stop(reason(ReasonCode.UNKNOWN_CARRIER, { value: rawOf(field) })),
+    stop(reason(Cause.UNKNOWN_CARRIER, { value: rawOf(field) })),
 };
 
 export const byCarrier = (carrier: Carrier): Filter =>
@@ -126,7 +130,7 @@ export const byCarrier = (carrier: Carrier): Filter =>
 export const hasNumber = (): Filter =>
   each((candidate) =>
     numberOf(candidate) === undefined
-      ? stop(reason(ReasonCode.MISSING_DELIVERY_NOTE_NUMBER))
+      ? stop(reason(Cause.MISSING_DELIVERY_NOTE_NUMBER))
       : undefined,
   );
 
@@ -146,12 +150,12 @@ export const dedupeWithinExport = (): Filter => (candidates) => {
       if (!identical) {
         decisions.set(
           candidate,
-          stop(reason(ReasonCode.CONFLICTING_DUPLICATE, params)),
+          stop(reason(Cause.CONFLICTING_DUPLICATE, params)),
         );
       } else if (index > 0) {
         decisions.set(
           candidate,
-          skip(reason(ReasonCode.DUPLICATE_IN_EXPORT, params)),
+          skip(reason(Cause.DUPLICATE_IN_EXPORT, params)),
         );
       }
     });
@@ -185,7 +189,7 @@ export const alreadyDelivered = (
           trackingId: previous.trackingId,
         }
       : stop(
-          reason(ReasonCode.DELIVERED_WITH_DIFFERENT_DATA, {
+          reason(Cause.DELIVERED_WITH_DIFFERENT_DATA, {
             value: previous.trackingId,
           }),
         );

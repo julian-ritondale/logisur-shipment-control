@@ -109,7 +109,7 @@ export class RunsShipmentsRepository {
       contentHash,
       lastCompletedStep: PipelineStep.FILTER,
       failedStep: null,
-      reasonCode: null,
+      cause: null,
       reasonMessage: null,
       payload: Prisma.DbNull,
       trackingId: null,
@@ -203,7 +203,7 @@ export class RunsShipmentsRepository {
         trackingId,
         deliveredAt: new Date(),
         failedStep: null,
-        reasonCode: null,
+        cause: null,
         reasonMessage: null,
       },
     });
@@ -211,14 +211,14 @@ export class RunsShipmentsRepository {
 
   async markFailed(
     id: string,
-    { step, code, message }: Failure,
+    { step, cause, message }: Failure,
   ): Promise<void> {
     await this.prisma.shipment.update({
       where: { id },
       data: {
         status: ShipmentStatus.FAILED,
         failedStep: step,
-        reasonCode: code,
+        cause,
         reasonMessage: message,
       },
     });

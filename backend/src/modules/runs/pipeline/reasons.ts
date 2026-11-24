@@ -1,6 +1,11 @@
 import type { JsonObject } from '../../../common/types/json.js';
 import type { DeliveryNoteField } from '../../delivery-notes/types/delivery-note.types.js';
-import type { Failure, Reason, Step } from './types/pipeline.types.js';
+import type {
+  Cause,
+  Reason,
+  Step,
+} from '../../../common/types/pipeline.types.js';
+import type { Failure } from './types/pipeline.types.js';
 
 export const MIN_PACKAGES = 1;
 export const MIN_WEIGHT_KG = 0;
@@ -12,8 +17,8 @@ export interface ReasonParams {
   count?: number;
 }
 
-/** Every way a delivery note can stop, with the message LogiSur reads. */
-const MESSAGES = {
+/** The message LogiSur reads for each cause. */
+const MESSAGES: Record<Cause, (params: ReasonParams) => string> = {
   // FILTER: not for this run
   OTHER_CARRIER: ({ carrier }: ReasonParams) =>
     `Assigned to another carrier (${carrier})`,
@@ -69,27 +74,18 @@ const MESSAGES = {
   // Anything else
   INTERNAL_ERROR: () =>
     'Unexpected error while processing; retry it, and contact support if it keeps failing',
-} satisfies Record<string, (params: ReasonParams) => string>;
+};
 
-export type ReasonCode = keyof typeof MESSAGES;
-
-export const ReasonCode = Object.fromEntries(
-  Object.keys(MESSAGES).map((code) => [code, code]),
-) as { [C in ReasonCode]: C };
-
-export const reason = (
-  code: ReasonCode,
-  params: ReasonParams = {},
-): Reason => ({
-  code,
-  message: MESSAGES[code](params),
+export const reason = (cause: Cause, params: ReasonParams = {}): Reason => ({
+  cause,
+  message: MESSAGES[cause](params),
 });
 
 export const failure = (
   step: Step,
-  { code, message }: Reason,
+  { cause, message }: Reason,
   extra: { issues?: Reason[]; detail?: JsonObject } = {},
-): Failure => ({ step, code, message, ...extra });
+): Failure => ({ step, cause, message, ...extra });
 
 /** Business names of our fields, used when a carrier rejects one. */
 export const FIELD_LABELS: Record<DeliveryNoteField, string> = {

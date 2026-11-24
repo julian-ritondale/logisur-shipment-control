@@ -43,8 +43,8 @@ Todo listado es paginado por cursor (`?after=<último id>&limit=20`, máximo 100
 | `POST /runs/:id/retries` | Nueva corrida con los envíos que fallaron en la corrida `:id`. | — |
 | `GET /runs` | Lista corridas. | `status`, `kind`, `exportId`, `carrier` |
 | `GET /runs/:id` | Una corrida: totales y desglose. | — |
-| `GET /attempts` | Qué le pasó a cada remito en cada corrida. | `runId`, `shipmentId`, `outcome`, `step`, `reasonCode`, `deliveryNoteNumber` |
-| `GET /shipments` | Lista envíos. | `status`, `carrier`, `deliveryNoteNumber`, `failedStep`, `reasonCode` |
+| `GET /attempts` | Qué le pasó a cada remito en cada corrida. | `runId`, `shipmentId`, `outcome`, `step`, `cause`, `deliveryNoteNumber` |
+| `GET /shipments` | Lista envíos. | `status`, `carrier`, `deliveryNoteNumber`, `failedStep`, `cause` |
 | `GET /shipments/:id` | Un envío, con la salida de cada paso. | — |
 | `POST /shipments/:id/retries` | Nueva corrida que retoma ese envío fallido. | — |
 
@@ -181,7 +181,7 @@ erDiagram
 | `delivery_notes` | Cada remito, tal cual vino. | único (`export_id`, `position`); índices por `number` y `carrier` |
 | `runs` | Una ejecución: `INITIAL` o `RETRY` (con `parent_run_id`). Estado y totales. | índices por `export_id`, `status` |
 | `shipments` | Un remito en camino a un transportista, con la salida de cada paso. | **único (`carrier`, `external_ref`)** = la clave de idempotencia del transportista |
-| `attempts` | Qué le pasó a un remito en una corrida. | índices por (`run_id`, `outcome`), `shipment_id`, `reason_code` |
+| `attempts` | Qué le pasó a un remito en una corrida. | índices por (`run_id`, `outcome`), `shipment_id`, `cause` |
 
 ## Corrida e intentos
 
@@ -194,8 +194,8 @@ erDiagram
   "totals": { "total": 51, "delivered": 20, "failed": 3, "skipped": 28 },
   "breakdown": [
     { "outcome": "DELIVERED", "step": "DELIVER", "count": 20 },
-    { "outcome": "FAILED", "step": "VALIDATE", "reasonCode": "MISSING_POSTAL_CODE", "count": 1 },
-    { "outcome": "SKIPPED", "step": "FILTER", "reasonCode": "OTHER_CARRIER", "count": 19 }
+    { "outcome": "FAILED", "step": "VALIDATE", "cause": "MISSING_POSTAL_CODE", "count": 1 },
+    { "outcome": "SKIPPED", "step": "FILTER", "cause": "OTHER_CARRIER", "count": 19 }
   ]
 }
 ```
@@ -204,7 +204,7 @@ erDiagram
 
 ```json
 { "deliveryNoteNumber": "R-10000477", "reachedStep": "VALIDATE", "outcome": "FAILED",
-  "reasonCode": "MISSING_POSTAL_CODE", "reason": "Postal code is missing", "retryable": true }
+  "cause": "MISSING_POSTAL_CODE", "reason": "Postal code is missing", "retryable": true }
 ```
 
 Estados de una corrida: `RUNNING`, `COMPLETED`, `COMPLETED_WITH_FAILURES` y `FAILED`, este último cuando la corrida se interrumpió por un error inesperado.

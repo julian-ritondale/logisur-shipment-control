@@ -12,10 +12,10 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-# Schema, migrations and CLI config, for `prisma migrate deploy` at start.
+# Schema and CLI config, to apply the schema at start.
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma7.config.ts ./
 USER node
 EXPOSE 3000
-# Apply pending migrations, then start the API.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# No migrations until the schema settles: push it as it is, then start the API.
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/main.js"]

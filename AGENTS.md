@@ -77,7 +77,7 @@ npx vitest run src/app.controller.spec.ts   # single test file
 npx vitest run -t "returns Hello"       # tests matching a name
 npm run test:e2e                        # needs PostgreSQL: uses logisur_test (TEST_DATABASE_URL overrides)
 npm run lint
-npm run prisma:migrate -- --name <name> # after editing prisma/schema.prisma: new migration + client
+npm run prisma:push                     # after editing prisma/schema.prisma: apply it (no migrations yet, ADR 0011)
 npm run prisma:generate                 # regenerate the client (src/generated/prisma, git-ignored)
 
 # Frontend (cd frontend)
@@ -95,7 +95,7 @@ On this Windows machine use `python`, not `python3`. The npm shipped with Node 2
 
 Docker Compose gives the backend these environment variables. `@nestjs/config` validates them at startup against a Zod schema (`backend/src/config/env.schema.ts`), and on the host they come from `backend/.env` (see `.env.example`).
 
-- `DATABASE_URL`: `postgresql://logisur:logisur@postgres:5432/logisur`. The container applies pending migrations (`prisma migrate deploy`) before starting.
+- `DATABASE_URL`: `postgresql://logisur:logisur@postgres:5432/logisur`. The container applies the schema (`prisma db push`) before starting; there are no migrations until the schema settles.
 - `CARRIER`: which carrier's remitos this deployment processes. Default `EXPRESO_ANDINO`; it can also be `CRUZ_DEL_NORTE` or `TRANSPORTE_LITORAL`, which have no integration yet (their remitos fail as `NO_CARRIER_INTEGRATION`).
 - `EXPRESO_API_URL`: `http://expreso-api:8000`
 - `EXPRESO_API_KEY`: defaults to the mock's key `andino-test-7f3a91`

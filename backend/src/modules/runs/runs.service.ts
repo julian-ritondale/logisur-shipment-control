@@ -25,13 +25,9 @@ import type {
   Decision,
   DeliveredShipment,
 } from './pipeline/filter/filters.js';
-import { failure, reason, ReasonCode } from './pipeline/reasons.js';
+import { failure, reason } from './pipeline/reasons.js';
 import { runStages } from './pipeline/stage.js';
-import {
-  Outcome,
-  Step,
-  type Failure,
-} from './pipeline/types/pipeline.types.js';
+import { type Failure } from './pipeline/types/pipeline.types.js';
 import { ExportsService } from '../exports/exports.service.js';
 import type { ListRunsRequestDto } from './dto/list-runs.request.dto.js';
 import type {
@@ -49,6 +45,7 @@ import {
   toRunSummaryDto,
 } from './runs.mapper.js';
 import { RunsRepository, type AttemptResult } from './runs.repository.js';
+import { Cause, Outcome, Step } from '../../common/types/pipeline.types.js';
 
 interface Work {
   runId: string;
@@ -189,7 +186,7 @@ export class RunsService {
             reachedStep: Step.FILTER,
             result: {
               outcome: Outcome.SKIPPED,
-              reason: reason(ReasonCode.IN_PROGRESS_ELSEWHERE),
+              reason: reason(Cause.IN_PROGRESS_ELSEWHERE),
             },
           });
           continue;
@@ -262,7 +259,7 @@ export class RunsService {
         reachedStep: Step.FILTER,
         result: {
           outcome: Outcome.SKIPPED,
-          reason: reason(ReasonCode.IN_PROGRESS_ELSEWHERE),
+          reason: reason(Cause.IN_PROGRESS_ELSEWHERE),
         },
       });
       return;
@@ -304,7 +301,7 @@ export class RunsService {
       );
       await this.fail(
         work,
-        failure(work.from, reason(ReasonCode.INTERNAL_ERROR), {
+        failure(work.from, reason(Cause.INTERNAL_ERROR), {
           detail: {
             error: error instanceof Error ? error.message : String(error),
           },

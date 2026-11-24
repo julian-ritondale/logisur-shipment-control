@@ -1,8 +1,8 @@
 import { execSync } from 'node:child_process';
 
-/** Brings the e2e database schema up to date once, before any test file. */
+/** Recreates the e2e database from the schema once, before any test file. No migrations until the schema settles. */
 export default function setup(): void {
-  execSync('npx prisma migrate deploy', {
+  execSync('npx prisma db push --force-reset --accept-data-loss', {
     stdio: 'inherit',
     env: {
       ...process.env,

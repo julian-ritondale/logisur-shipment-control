@@ -12,7 +12,7 @@ export interface ShipmentFilters {
   carrier?: string;
   deliveryNoteNumber?: string;
   failedStep?: PipelineStep;
-  reasonCode?: string;
+  cause?: string;
 }
 
 @Injectable()

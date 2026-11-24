@@ -150,43 +150,43 @@ describe('Runs, reports and shipments (e2e)', () => {
           {
             outcome: 'FAILED',
             step: 'FILTER',
-            reasonCode: 'UNKNOWN_CARRIER',
+            cause: 'UNKNOWN_CARRIER',
             count: 1,
           },
           {
             outcome: 'FAILED',
             step: 'VALIDATE',
-            reasonCode: 'MISSING_POSTAL_CODE',
+            cause: 'MISSING_POSTAL_CODE',
             count: 1,
           },
           {
             outcome: 'FAILED',
             step: 'VALIDATE',
-            reasonCode: 'MISSING_ADDRESS',
+            cause: 'MISSING_ADDRESS',
             count: 1,
           },
           {
             outcome: 'FAILED',
             step: 'VALIDATE',
-            reasonCode: 'TOO_FEW_PACKAGES',
+            cause: 'TOO_FEW_PACKAGES',
             count: 1,
           },
           {
             outcome: 'SKIPPED',
             step: 'FILTER',
-            reasonCode: 'OTHER_CARRIER',
+            cause: 'OTHER_CARRIER',
             count: 2,
           },
           {
             outcome: 'SKIPPED',
             step: 'FILTER',
-            reasonCode: 'CUSTOMER_PICKUP',
+            cause: 'CUSTOMER_PICKUP',
             count: 1,
           },
           {
             outcome: 'SKIPPED',
             step: 'FILTER',
-            reasonCode: 'DUPLICATE_IN_EXPORT',
+            cause: 'DUPLICATE_IN_EXPORT',
             count: 1,
           },
         ]),
@@ -200,7 +200,7 @@ describe('Runs, reports and shipments (e2e)', () => {
         failed.map((a: JsonObject) => [
           a.deliveryNoteNumber,
           a.reachedStep,
-          a.reasonCode,
+          a.cause,
           a.reason,
           a.retryable,
         ]),
@@ -334,7 +334,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       expect(await attempts(`runId=${id}`)).toEqual([
         expect.objectContaining({
           outcome: 'FAILED',
-          reasonCode: 'DELIVERED_WITH_DIFFERENT_DATA',
+          cause: 'DELIVERED_WITH_DIFFERENT_DATA',
           retryable: false,
         }),
       ]);
@@ -356,7 +356,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       expect(shipment).toMatchObject({
         status: 'FAILED',
         failedStep: 'DELIVER',
-        reasonCode: 'CARRIER_UNAVAILABLE',
+        cause: 'CARRIER_UNAVAILABLE',
       });
       const { body } = await http()
         .post(`/shipments/${shipment.id}/retries`)
@@ -423,7 +423,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       );
       expect(carrier.deliver).toHaveBeenCalledTimes(1);
       expect(
-        await attempts(`runId=${id}&reasonCode=INVALID_CARRIER_CREDENTIALS`),
+        await attempts(`runId=${id}&cause=INVALID_CARRIER_CREDENTIALS`),
       ).toHaveLength(3);
     });
 
@@ -448,7 +448,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       const { id } = await run([deliveryNote('R-1', 'EXPRESO ANDINO')]);
       expect(await attempts(`runId=${id}`)).toEqual([
         expect.objectContaining({
-          reasonCode: 'NO_CARRIER_INTEGRATION',
+          cause: 'NO_CARRIER_INTEGRATION',
           retryable: true,
         }),
       ]);
@@ -497,9 +497,7 @@ describe('Runs, reports and shipments (e2e)', () => {
         failed.map((s: JsonObject) => s.deliveryNoteNumber).sort(),
       ).toEqual(['R-7', 'R-8', 'R-9']);
       const noPostalCode = (
-        await http()
-          .get('/shipments?reasonCode=MISSING_POSTAL_CODE')
-          .expect(200)
+        await http().get('/shipments?cause=MISSING_POSTAL_CODE').expect(200)
       ).body.items;
       expect(noPostalCode.map((s: JsonObject) => s.deliveryNoteNumber)).toEqual(
         ['R-7'],
@@ -516,7 +514,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       expect(
         (await attempts(`shipmentId=${id}`)).map((a: JsonObject) => [
           a.outcome,
-          a.reasonCode,
+          a.cause,
         ]),
       ).toEqual([
         ['FAILED', 'CARRIER_UNAVAILABLE'],
@@ -531,7 +529,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       ['/runs?limit=0', 400],
       ['/shipments?status=LOST', 400],
       ['/attempts?step=SHIP', 400],
-      ['/attempts?reasonCode=BROKEN', 400],
+      ['/attempts?cause=BROKEN', 400],
     ])(
       'Given GET %s, when called, then it answers %i',
       async (path, status) => {

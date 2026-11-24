@@ -5,8 +5,11 @@ import {
   DELIVERABLE_CARRIERS,
   type Carrier,
 } from '../../carriers/carrier-registry.js';
-import { ReasonCode } from '../../runs/pipeline/reasons.js';
-import { STEPS, type Step } from '../../runs/pipeline/types/pipeline.types.js';
+import {
+  Cause,
+  STEPS,
+  type Step,
+} from '../../../common/types/pipeline.types.js';
 
 const MAX_NUMBER_LENGTH = 100;
 
@@ -30,6 +33,6 @@ export class ListShipmentsRequestDto extends PageRequestDto {
   failedStep?: Step;
 
   @IsOptional()
-  @IsIn(Object.values(ReasonCode))
-  reasonCode?: ReasonCode;
+  @IsIn(Object.values(Cause))
+  cause?: Cause;
 }

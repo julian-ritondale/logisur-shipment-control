@@ -3,8 +3,8 @@ import type {
   PipelineStep,
   ShipmentStatus,
 } from '../../../generated/prisma/client.js';
-import type { ReasonCode } from '../../runs/pipeline/reasons.js';
 import type { NormalizedDeliveryNote } from '../../delivery-notes/types/delivery-note.types.js';
+import { type Cause } from '../../../common/types/pipeline.types.js';
 
 /** A delivery note on its way to a carrier. Its attempts: `GET /attempts?shipmentId=`. */
 export class ShipmentResponseDto {
@@ -16,7 +16,7 @@ export class ShipmentResponseDto {
   status: ShipmentStatus;
   lastCompletedStep?: PipelineStep;
   failedStep?: PipelineStep;
-  reasonCode?: ReasonCode;
+  cause?: Cause;
   reason?: string;
   trackingId?: string;
   deliveredAt?: Date;

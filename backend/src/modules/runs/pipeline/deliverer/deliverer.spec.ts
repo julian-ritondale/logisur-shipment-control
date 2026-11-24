@@ -4,9 +4,8 @@ import {
 } from '../../../carriers/carrier-client.js';
 import { Carrier } from '../../../carriers/carrier-registry.js';
 import { carrierAccess, fromCarrierError } from '../carrier-access.js';
-import { ReasonCode } from '../reasons.js';
-import { Step } from '../types/pipeline.types.js';
 import { fromDeliveryOutcome } from './deliverer.js';
+import { Cause, Step } from '../../../../common/types/pipeline.types.js';
 
 describe('delivery outcomes', () => {
   describe('Scenario: the carrier has the shipment', () => {
@@ -38,7 +37,7 @@ describe('delivery outcomes', () => {
         ok: false,
         failure: {
           step: Step.DELIVER,
-          code: ReasonCode.REJECTED_BY_CARRIER,
+          cause: Cause.REJECTED_BY_CARRIER,
           message:
             'The carrier rejected the shipment (postal code: required; number of packages: must be >= 1; surcharge: unknown)',
         },
@@ -48,21 +47,21 @@ describe('delivery outcomes', () => {
     it.each([
       [
         { status: DeliveryStatus.UNAUTHORIZED } as const,
-        ReasonCode.INVALID_CARRIER_CREDENTIALS,
+        Cause.INVALID_CARRIER_CREDENTIALS,
       ],
       [
         {
           status: DeliveryStatus.UNAVAILABLE,
           detail: { status: 503 },
         } as const,
-        ReasonCode.CARRIER_UNAVAILABLE,
+        Cause.CARRIER_UNAVAILABLE,
       ],
     ])(
       'Given %j, when translated, then it fails at DELIVER with %s',
-      (outcome, code) => {
+      (outcome, cause) => {
         expect(fromDeliveryOutcome(outcome)).toMatchObject({
           ok: false,
-          failure: { step: Step.DELIVER, code },
+          failure: { step: Step.DELIVER, cause },
         });
       },
     );
@@ -72,19 +71,19 @@ describe('delivery outcomes', () => {
     it.each([
       [
         new CarrierRequestError(DeliveryStatus.UNAUTHORIZED, 'API key refused'),
-        ReasonCode.INVALID_CARRIER_CREDENTIALS,
+        Cause.INVALID_CARRIER_CREDENTIALS,
       ],
       [
         new CarrierRequestError(DeliveryStatus.UNAVAILABLE, '503'),
-        ReasonCode.CARRIER_UNAVAILABLE,
+        Cause.CARRIER_UNAVAILABLE,
       ],
-      [new TypeError('fetch failed'), ReasonCode.CARRIER_UNAVAILABLE],
+      [new TypeError('fetch failed'), Cause.CARRIER_UNAVAILABLE],
     ])(
       'Given %s while validating, when translated, then it fails at VALIDATE with %s',
-      (error, code) => {
+      (error, cause) => {
         expect(fromCarrierError(Step.VALIDATE, error)).toMatchObject({
           step: Step.VALIDATE,
-          code,
+          cause,
         });
       },
     );
@@ -94,7 +93,7 @@ describe('delivery outcomes', () => {
         carrierAccess(Carrier.CRUZ_DEL_NORTE).missing(Step.VALIDATE),
       ).toEqual({
         step: Step.VALIDATE,
-        code: ReasonCode.NO_CARRIER_INTEGRATION,
+        cause: Cause.NO_CARRIER_INTEGRATION,
         message: 'There is no integration to deliver to Cruz del Norte yet',
       });
     });

@@ -1,5 +1,6 @@
-import { failure, reason, ReasonCode } from './reasons.js';
-import { fail, ok, type Result, type Step } from './types/pipeline.types.js';
+import { failure, reason } from './reasons.js';
+import { fail, ok, type Result } from './types/pipeline.types.js';
+import { Cause, type Step } from '../../../common/types/pipeline.types.js';
 
 /** One step for one delivery note: takes the previous step's output, gives the next one's input. */
 export interface Stage<In = any, Out = any> {
@@ -29,7 +30,7 @@ export async function runStages<Out>(
       .run(value)
       .catch((error: unknown) =>
         fail(
-          failure(stage.step, reason(ReasonCode.INTERNAL_ERROR), {
+          failure(stage.step, reason(Cause.INTERNAL_ERROR), {
             detail: {
               error: error instanceof Error ? error.message : String(error),
             },

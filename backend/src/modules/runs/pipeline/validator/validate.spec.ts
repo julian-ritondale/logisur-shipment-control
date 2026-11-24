@@ -1,9 +1,8 @@
 import type { JsonObject } from '../../../../common/types/json.js';
 import { Service } from '../../../delivery-notes/schemas/delivery-note.schemas.js';
 import { normalize } from '../normalizer/normalize.js';
-import { ReasonCode } from '../reasons.js';
-import { Step } from '../types/pipeline.types.js';
 import { validate } from './validate.js';
+import { Cause, Step } from '../../../../common/types/pipeline.types.js';
 
 const SERVED = new Set([
   'Buenos Aires',
@@ -77,31 +76,31 @@ describe('validate', () => {
         'an empty postal code (R-10000477)',
         {},
         { codigo_postal: '' },
-        ReasonCode.MISSING_POSTAL_CODE,
+        Cause.MISSING_POSTAL_CODE,
         'Postal code is missing',
       ],
       [
         'a blank address (R-10000516)',
         {},
         { direccion: '  ' },
-        ReasonCode.MISSING_ADDRESS,
+        Cause.MISSING_ADDRESS,
         'Recipient address is missing',
       ],
       [
         '0 packages (R-10000541)',
         { bultos: 0 },
         {},
-        ReasonCode.TOO_FEW_PACKAGES,
+        Cause.TOO_FEW_PACKAGES,
         'Must have at least 1 package (has 0)',
       ],
     ])(
       'Given %s, when validated, then it fails at VALIDATE with %s',
-      (_case, overrides, recipient, code, message) => {
+      (_case, overrides, recipient, cause, message) => {
         expect(failureOf(overrides, recipient)).toEqual({
           step: Step.VALIDATE,
-          code,
+          cause,
           message,
-          issues: [{ code, message }],
+          issues: [{ cause, message }],
         });
       },
     );
@@ -112,94 +111,94 @@ describe('validate', () => {
       [
         { nro_remito: '' },
         {},
-        ReasonCode.MISSING_DELIVERY_NOTE_NUMBER,
+        Cause.MISSING_DELIVERY_NOTE_NUMBER,
         'The delivery note has no number',
       ],
       [
         {},
         { razon_social: '' },
-        ReasonCode.MISSING_RECIPIENT_NAME,
+        Cause.MISSING_RECIPIENT_NAME,
         'Recipient name is missing',
       ],
       [
         {},
         { localidad: null },
-        ReasonCode.MISSING_CITY,
+        Cause.MISSING_CITY,
         'Recipient city is missing',
       ],
       [
         {},
         { provincia: '' },
-        ReasonCode.MISSING_PROVINCE,
+        Cause.MISSING_PROVINCE,
         'Recipient province is missing',
       ],
       [
         {},
         { provincia: 'Patagonia' },
-        ReasonCode.UNKNOWN_PROVINCE,
+        Cause.UNKNOWN_PROVINCE,
         'Province "Patagonia" is not recognized',
       ],
       [
         {},
         { provincia: 'Mendoza' },
-        ReasonCode.PROVINCE_NOT_SERVED,
+        Cause.PROVINCE_NOT_SERVED,
         "The carrier doesn't deliver to Mendoza",
       ],
       [
         { bultos: null },
         {},
-        ReasonCode.MISSING_PACKAGES,
+        Cause.MISSING_PACKAGES,
         'Number of packages is missing',
       ],
       [
         { bultos: 'dos' },
         {},
-        ReasonCode.INVALID_PACKAGES,
+        Cause.INVALID_PACKAGES,
         'Number of packages "dos" is not a whole number',
       ],
-      [{ peso_kg: '' }, {}, ReasonCode.MISSING_WEIGHT, 'Weight is missing'],
+      [{ peso_kg: '' }, {}, Cause.MISSING_WEIGHT, 'Weight is missing'],
       [
         { peso_kg: '12 kg' },
         {},
-        ReasonCode.INVALID_WEIGHT,
+        Cause.INVALID_WEIGHT,
         'Weight "12 kg" is not a number',
       ],
       [
         { peso_kg: '0,0' },
         {},
-        ReasonCode.NON_POSITIVE_WEIGHT,
+        Cause.NON_POSITIVE_WEIGHT,
         'Weight must be greater than 0 kg (is 0)',
       ],
       [
         { valor_declarado: 'mucho' },
         {},
-        ReasonCode.INVALID_DECLARED_VALUE,
+        Cause.INVALID_DECLARED_VALUE,
         'Declared value "mucho" is not a number',
       ],
       [
         { valor_declarado: -5 },
         {},
-        ReasonCode.NEGATIVE_DECLARED_VALUE,
+        Cause.NEGATIVE_DECLARED_VALUE,
         "Declared value can't be negative (is -5)",
       ],
       [
         { servicio: '' },
         {},
-        ReasonCode.MISSING_SERVICE,
+        Cause.MISSING_SERVICE,
         'Service (NORMAL or URGENTE) is missing',
       ],
       [
         { servicio: 'EXPRESS' },
         {},
-        ReasonCode.UNKNOWN_SERVICE,
+        Cause.UNKNOWN_SERVICE,
         'Service "EXPRESS" is unknown (expected NORMAL or URGENTE)',
       ],
     ])(
       'Given %j with recipient %j, when validated, then it fails with %s: %s',
-      (overrides, recipient, code, message) => {
+      (overrides, recipient, cause, message) => {
         expect(failureOf(overrides, recipient)).toMatchObject({
           step: Step.VALIDATE,
-          code,
+          cause,
           message,
         });
       },
@@ -207,15 +206,15 @@ describe('validate', () => {
   });
 
   describe('Scenario: several problems at once', () => {
-    it('Given no postal code and 0 packages, when validated, then both are reported, the first one as its code', () => {
+    it('Given no postal code and 0 packages, when validated, then both are reported, the first one as its cause', () => {
       const failure = failureOf({ bultos: 0 }, { codigo_postal: '' });
-      expect(failure.code).toBe(ReasonCode.MISSING_POSTAL_CODE);
+      expect(failure.cause).toBe(Cause.MISSING_POSTAL_CODE);
       expect(failure.message).toBe(
         'Postal code is missing; Must have at least 1 package (has 0)',
       );
-      expect(failure.issues?.map((issue) => issue.code)).toEqual([
-        ReasonCode.MISSING_POSTAL_CODE,
-        ReasonCode.TOO_FEW_PACKAGES,
+      expect(failure.issues?.map((issue) => issue.cause)).toEqual([
+        Cause.MISSING_POSTAL_CODE,
+        Cause.TOO_FEW_PACKAGES,
       ]);
     });
   });

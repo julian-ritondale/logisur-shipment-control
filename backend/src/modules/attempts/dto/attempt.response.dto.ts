@@ -1,10 +1,10 @@
 import type { JsonObject } from '../../../common/types/json.js';
-import type { Reason } from '../../runs/pipeline/types/pipeline.types.js';
-import type { ReasonCode } from '../../runs/pipeline/reasons.js';
-import type {
-  Outcome,
-  Step,
-} from '../../runs/pipeline/types/pipeline.types.js';
+import {
+  type Cause,
+  type Outcome,
+  type Reason,
+  type Step,
+} from '../../../common/types/pipeline.types.js';
 
 /** What happened to one delivery note in one run. */
 export class AttemptResponseDto {
@@ -18,7 +18,7 @@ export class AttemptResponseDto {
   fromStep: Step;
   reachedStep: Step;
   outcome: Outcome;
-  reasonCode?: ReasonCode;
+  cause?: Cause;
   reason?: string;
   /** Every problem found, when there was more than one. */
   issues?: Reason[];

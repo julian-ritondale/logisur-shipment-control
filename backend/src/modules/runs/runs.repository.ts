@@ -9,13 +9,13 @@ import {
   RunStatus,
 } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type Failure } from './pipeline/types/pipeline.types.js';
+import type { Carrier } from '../carriers/carrier-registry.js';
 import {
   Outcome,
-  type Failure,
   type Reason,
   type Step,
-} from './pipeline/types/pipeline.types.js';
-import type { Carrier } from '../carriers/carrier-registry.js';
+} from '../../common/types/pipeline.types.js';
 
 export type AttemptResult =
   | { outcome: typeof Outcome.DELIVERED; trackingId: string }
@@ -42,7 +42,7 @@ export interface RunFilters {
 export interface BreakdownRow {
   outcome: AttemptOutcome;
   reachedStep: PipelineStep;
-  reasonCode: string | null;
+  cause: string | null;
   count: number;
 }
 
@@ -62,14 +62,14 @@ const attemptColumns = (result: AttemptResult) => {
       return { trackingId: result.trackingId };
     case Outcome.SKIPPED:
       return {
-        reasonCode: result.reason.code,
+        cause: result.reason.cause,
         reasonMessage: result.reason.message,
       };
     case Outcome.FAILED: {
-      const { step, code, message, issues, detail } = result.failure;
+      const { step, cause, message, issues, detail } = result.failure;
       return {
         failedStep: step,
-        reasonCode: code,
+        cause,
         reasonMessage: message,
         ...(issues && { issues: issues.map(json) }),
         ...(detail && { technicalDetail: json(detail) }),
@@ -108,19 +108,15 @@ export class RunsRepository {
 
   async breakdown(runId: string): Promise<BreakdownRow[]> {
     const groups = await this.prisma.attempt.groupBy({
-      by: ['outcome', 'reachedStep', 'reasonCode'],
+      by: ['outcome', 'reachedStep', 'cause'],
       where: { runId },
       _count: { _all: true },
-      orderBy: [
-        { outcome: 'asc' },
-        { reachedStep: 'asc' },
-        { reasonCode: 'asc' },
-      ],
+      orderBy: [{ outcome: 'asc' }, { reachedStep: 'asc' }, { cause: 'asc' }],
     });
-    return groups.map(({ outcome, reachedStep, reasonCode, _count }) => ({
+    return groups.map(({ outcome, reachedStep, cause, _count }) => ({
       outcome,
       reachedStep,
-      reasonCode,
+      cause,
       count: _count._all,
     }));
   }

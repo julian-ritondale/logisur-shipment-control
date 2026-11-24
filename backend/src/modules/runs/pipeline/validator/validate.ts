@@ -19,53 +19,48 @@ import {
   MIN_PACKAGES,
   MIN_WEIGHT_KG,
   reason,
-  ReasonCode,
 } from '../reasons.js';
 import type { Stage } from '../stage.js';
+import { fail, ok, type Result } from '../types/pipeline.types.js';
 import {
-  fail,
-  ok,
-  Step,
+  Cause,
   type Reason,
-  type Result,
-} from '../types/pipeline.types.js';
+  Step,
+} from '../../../../common/types/pipeline.types.js';
 
 /** The reason for an absent value, and for a value that is there but wrong. */
-const when = (missing: ReasonCode, wrong: ReasonCode = missing) => ({
+const when = (missing: Cause, wrong: Cause = missing) => ({
   error: (issue: { input?: unknown }) =>
     issue.input === undefined ? missing : wrong,
 });
 
-/** The rules: what a carrier needs, each broken rule named by its reason code. */
+/** The rules: what a carrier needs, each broken rule named by its cause. */
 const rules = (servedProvinces: ReadonlySet<string>) =>
   z.object({
-    number: z.string(when(ReasonCode.MISSING_DELIVERY_NOTE_NUMBER)),
-    name: z.string(when(ReasonCode.MISSING_RECIPIENT_NAME)),
-    street: z.string(when(ReasonCode.MISSING_ADDRESS)),
-    city: z.string(when(ReasonCode.MISSING_CITY)),
+    number: z.string(when(Cause.MISSING_DELIVERY_NOTE_NUMBER)),
+    name: z.string(when(Cause.MISSING_RECIPIENT_NAME)),
+    street: z.string(when(Cause.MISSING_ADDRESS)),
+    city: z.string(when(Cause.MISSING_CITY)),
     province: z
-      .enum(
-        PROVINCES,
-        when(ReasonCode.MISSING_PROVINCE, ReasonCode.UNKNOWN_PROVINCE),
-      )
+      .enum(PROVINCES, when(Cause.MISSING_PROVINCE, Cause.UNKNOWN_PROVINCE))
       .refine((name) => servedProvinces.has(name), {
-        error: ReasonCode.PROVINCE_NOT_SERVED,
+        error: Cause.PROVINCE_NOT_SERVED,
       }),
-    postalCode: z.string(when(ReasonCode.MISSING_POSTAL_CODE)),
+    postalCode: z.string(when(Cause.MISSING_POSTAL_CODE)),
     phone: z.string().optional(),
     packages: z
-      .number(when(ReasonCode.MISSING_PACKAGES, ReasonCode.INVALID_PACKAGES))
-      .min(MIN_PACKAGES, { error: ReasonCode.TOO_FEW_PACKAGES }),
+      .number(when(Cause.MISSING_PACKAGES, Cause.INVALID_PACKAGES))
+      .min(MIN_PACKAGES, { error: Cause.TOO_FEW_PACKAGES }),
     weightKg: z
-      .number(when(ReasonCode.MISSING_WEIGHT, ReasonCode.INVALID_WEIGHT))
-      .gt(MIN_WEIGHT_KG, { error: ReasonCode.NON_POSITIVE_WEIGHT }),
+      .number(when(Cause.MISSING_WEIGHT, Cause.INVALID_WEIGHT))
+      .gt(MIN_WEIGHT_KG, { error: Cause.NON_POSITIVE_WEIGHT }),
     declaredValue: z
-      .number({ error: ReasonCode.INVALID_DECLARED_VALUE })
-      .min(MIN_DECLARED_VALUE, { error: ReasonCode.NEGATIVE_DECLARED_VALUE })
+      .number({ error: Cause.INVALID_DECLARED_VALUE })
+      .min(MIN_DECLARED_VALUE, { error: Cause.NEGATIVE_DECLARED_VALUE })
       .optional(),
     service: z.enum(
       Service,
-      when(ReasonCode.MISSING_SERVICE, ReasonCode.UNKNOWN_SERVICE),
+      when(Cause.MISSING_SERVICE, Cause.UNKNOWN_SERVICE),
     ),
   });
 
@@ -112,11 +107,11 @@ export function validate(
 
   if (!parsed.success) {
     const issues: Reason[] = parsed.error.issues.map((issue) =>
-      reason(issue.message as ReasonCode, { value: display(issue.input) }),
+      reason(issue.message as Cause, { value: display(issue.input) }),
     );
     const message = issues.map((issue) => issue.message).join('; ');
     return fail(
-      failure(Step.VALIDATE, { code: issues[0].code, message }, { issues }),
+      failure(Step.VALIDATE, { cause: issues[0].cause, message }, { issues }),
     );
   }
 
@@ -143,7 +138,7 @@ export const validator = (
       return validate(note, await carrier.provinces());
     } catch (error) {
       const why = fromCarrierError(Step.VALIDATE, error);
-      if (why.code === ReasonCode.INVALID_CARRIER_CREDENTIALS) {
+      if (why.cause === Cause.INVALID_CARRIER_CREDENTIALS) {
         carrier.refuse(why);
       }
       return fail(why);

@@ -4,7 +4,6 @@ import {
 } from '../../common/dto/page.request.dto.js';
 import type { Run } from '../../generated/prisma/client.js';
 import { carrierName, isCarrier } from '../carriers/carrier-registry.js';
-import type { ReasonCode } from './pipeline/reasons.js';
 import type { ListRunsRequestDto } from './dto/list-runs.request.dto.js';
 import type {
   RunBreakdownResponseDto,
@@ -12,6 +11,7 @@ import type {
   RunSummaryResponseDto,
 } from './dto/run.response.dto.js';
 import type { BreakdownRow, RunFilters } from './runs.repository.js';
+import { type Cause } from '../../common/types/pipeline.types.js';
 
 export const fromListRunsRequestDto = (
   dto: ListRunsRequestDto,
@@ -38,12 +38,12 @@ export const toRunSummaryDto = (run: Run): RunSummaryResponseDto => ({
 export const toRunBreakdownDto = ({
   outcome,
   reachedStep,
-  reasonCode,
+  cause,
   count,
 }: BreakdownRow): RunBreakdownResponseDto => ({
   outcome,
   step: reachedStep,
-  reasonCode: (reasonCode as ReasonCode | null) ?? undefined,
+  cause: (cause as Cause | null) ?? undefined,
   count,
 });
 

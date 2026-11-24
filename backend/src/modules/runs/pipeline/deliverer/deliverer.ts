@@ -5,9 +5,10 @@ import {
   type DeliveryOutcome,
 } from '../../../carriers/carrier-client.js';
 import type { CarrierAccess } from '../carrier-access.js';
-import { failure, FIELD_LABELS, reason, ReasonCode } from '../reasons.js';
+import { failure, FIELD_LABELS, reason } from '../reasons.js';
 import type { Stage } from '../stage.js';
-import { fail, ok, Step, type Result } from '../types/pipeline.types.js';
+import { fail, ok, type Result } from '../types/pipeline.types.js';
+import { Cause, Step } from '../../../../common/types/pipeline.types.js';
 
 export interface Delivered {
   trackingId: string;
@@ -32,15 +33,13 @@ const RESULTS: {
     fail(
       failure(
         Step.DELIVER,
-        reason(ReasonCode.REJECTED_BY_CARRIER, { value: describe(rejections) }),
+        reason(Cause.REJECTED_BY_CARRIER, { value: describe(rejections) }),
       ),
     ),
   UNAUTHORIZED: () =>
-    fail(failure(Step.DELIVER, reason(ReasonCode.INVALID_CARRIER_CREDENTIALS))),
+    fail(failure(Step.DELIVER, reason(Cause.INVALID_CARRIER_CREDENTIALS))),
   UNAVAILABLE: ({ detail }) =>
-    fail(
-      failure(Step.DELIVER, reason(ReasonCode.CARRIER_UNAVAILABLE), { detail }),
-    ),
+    fail(failure(Step.DELIVER, reason(Cause.CARRIER_UNAVAILABLE), { detail })),
 };
 
 export const fromDeliveryOutcome = (
@@ -61,7 +60,7 @@ export const deliverer = (
     const outcome = await carrier.client!.deliver(request);
     if (outcome.status === DeliveryStatus.UNAUTHORIZED) {
       carrier.refuse(
-        failure(Step.DELIVER, reason(ReasonCode.INVALID_CARRIER_CREDENTIALS)),
+        failure(Step.DELIVER, reason(Cause.INVALID_CARRIER_CREDENTIALS)),
       );
     }
     return fromDeliveryOutcome(outcome);

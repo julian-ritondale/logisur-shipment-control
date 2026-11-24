@@ -4,8 +4,9 @@ import {
   type CarrierClient,
 } from '../../carriers/carrier-client.js';
 import { carrierName, type Carrier } from '../../carriers/carrier-registry.js';
-import { failure, reason, ReasonCode } from './reasons.js';
-import type { Failure, Step } from './types/pipeline.types.js';
+import { failure, reason } from './reasons.js';
+import type { Failure } from './types/pipeline.types.js';
+import { Cause, type Step } from '../../../common/types/pipeline.types.js';
 
 /**
  * The carrier as one run sees it: its client (if there's an integration),
@@ -34,7 +35,7 @@ export function carrierAccess(
         ? undefined
         : failure(
             step,
-            reason(ReasonCode.NO_CARRIER_INTEGRATION, {
+            reason(Cause.NO_CARRIER_INTEGRATION, {
               carrier: carrierName(carrier),
             }),
           ),
@@ -52,14 +53,14 @@ export function carrierAccess(
 }
 
 const CARRIER_ERROR_REASONS = {
-  [DeliveryStatus.UNAUTHORIZED]: ReasonCode.INVALID_CARRIER_CREDENTIALS,
-  [DeliveryStatus.UNAVAILABLE]: ReasonCode.CARRIER_UNAVAILABLE,
+  [DeliveryStatus.UNAUTHORIZED]: Cause.INVALID_CARRIER_CREDENTIALS,
+  [DeliveryStatus.UNAVAILABLE]: Cause.CARRIER_UNAVAILABLE,
 };
 
 /** The business reason for a carrier request that failed outright. */
 export function fromCarrierError(step: Step, error: unknown): Failure {
   if (!(error instanceof CarrierRequestError)) {
-    return failure(step, reason(ReasonCode.CARRIER_UNAVAILABLE), {
+    return failure(step, reason(Cause.CARRIER_UNAVAILABLE), {
       detail: { error: String(error) },
     });
   }

@@ -116,7 +116,7 @@ model Shipment {
   status            ShipmentStatus @default(PENDING)
   lastCompletedStep PipelineStep?  @map("last_completed_step")
   failedStep        PipelineStep?  @map("failed_step")
-  reasonCode        String?        @map("reason_code")
+  cause             String?
   reasonMessage     String?        @map("reason_message")
   /// Output of NORMALIZE.
   normalized        Json?
@@ -149,7 +149,7 @@ model Attempt {
   reachedStep     PipelineStep   @map("reached_step")
   outcome         AttemptOutcome
   failedStep      PipelineStep?  @map("failed_step")
-  reasonCode      String?        @map("reason_code")
+  cause           String?
   reasonMessage   String?        @map("reason_message")
   /// Every problem found, when VALIDATE found more than one.
   issues          Json?
@@ -164,6 +164,6 @@ model Attempt {
 
   @@index([runId, outcome])
   @@index([shipmentId])
-  @@index([reasonCode])
+  @@index([cause])
   @@map("attempts")
 }

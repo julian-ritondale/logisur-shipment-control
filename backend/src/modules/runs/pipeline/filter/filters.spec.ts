@@ -1,8 +1,6 @@
 import type { JsonObject } from '../../../../common/types/json.js';
 import { Carrier } from '../../../carriers/carrier-registry.js';
 import { normalize } from '../normalizer/normalize.js';
-import { ReasonCode } from '../reasons.js';
-import { Outcome } from '../types/pipeline.types.js';
 import { contentHash } from './content-hash.js';
 import {
   alreadyDelivered,
@@ -13,6 +11,7 @@ import {
   type Candidate,
   type FilterResult,
 } from './filters.js';
+import { Cause, Outcome } from '../../../../common/types/pipeline.types.js';
 
 let nextId = 0;
 const candidate = (overrides: JsonObject = {}): Candidate => {
@@ -32,7 +31,7 @@ const candidate = (overrides: JsonObject = {}): Candidate => {
 const codes = ({ decided }: FilterResult) =>
   decided.map(({ decision }) => [
     decision.outcome,
-    'reason' in decision ? decision.reason.code : undefined,
+    'reason' in decision ? decision.reason.cause : undefined,
   ]);
 
 describe('filters', () => {
@@ -47,18 +46,18 @@ describe('filters', () => {
     });
 
     it.each([
-      ['CRUZ DEL NORTE', Outcome.SKIPPED, ReasonCode.OTHER_CARRIER],
-      ['RETIRA CLIENTE', Outcome.SKIPPED, ReasonCode.CUSTOMER_PICKUP],
-      ['Expreso Andino SA', Outcome.FAILED, ReasonCode.UNKNOWN_CARRIER],
-      ['  ', Outcome.FAILED, ReasonCode.MISSING_CARRIER],
+      ['CRUZ DEL NORTE', Outcome.SKIPPED, Cause.OTHER_CARRIER],
+      ['RETIRA CLIENTE', Outcome.SKIPPED, Cause.CUSTOMER_PICKUP],
+      ['Expreso Andino SA', Outcome.FAILED, Cause.UNKNOWN_CARRIER],
+      ['  ', Outcome.FAILED, Cause.MISSING_CARRIER],
     ])(
       'Given transportista %j, when filtered by Expreso Andino, then it is %s as %s',
-      (transportista, outcome, code) => {
+      (transportista, outcome, cause) => {
         expect(
           codes(
             byCarrier(Carrier.EXPRESO_ANDINO)([candidate({ transportista })]),
           ),
-        ).toEqual([[outcome, code]]);
+        ).toEqual([[outcome, cause]]);
       },
     );
 
@@ -69,7 +68,7 @@ describe('filters', () => {
       expect(decided[0].decision).toEqual({
         outcome: Outcome.SKIPPED,
         reason: {
-          code: ReasonCode.OTHER_CARRIER,
+          cause: Cause.OTHER_CARRIER,
           message: 'Assigned to another carrier (Cruz del Norte)',
         },
       });
@@ -79,7 +78,7 @@ describe('filters', () => {
   describe('Scenario: delivery notes without a number', () => {
     it('Given no nro_remito, when filtered, then it fails: there is no reference for the carrier', () => {
       expect(codes(hasNumber()([candidate({ nro_remito: '' })]))).toEqual([
-        [Outcome.FAILED, ReasonCode.MISSING_DELIVERY_NOTE_NUMBER],
+        [Outcome.FAILED, Cause.MISSING_DELIVERY_NOTE_NUMBER],
       ]);
     });
   });
@@ -105,8 +104,8 @@ describe('filters', () => {
       ]);
       expect(result.kept).toEqual([]);
       expect(codes(result)).toEqual([
-        [Outcome.FAILED, ReasonCode.CONFLICTING_DUPLICATE],
-        [Outcome.FAILED, ReasonCode.CONFLICTING_DUPLICATE],
+        [Outcome.FAILED, Cause.CONFLICTING_DUPLICATE],
+        [Outcome.FAILED, Cause.CONFLICTING_DUPLICATE],
       ]);
     });
   });
@@ -140,7 +139,7 @@ describe('filters', () => {
         ],
       ]);
       expect(codes(alreadyDelivered(delivered)([changed]))).toEqual([
-        [Outcome.FAILED, ReasonCode.DELIVERED_WITH_DIFFERENT_DATA],
+        [Outcome.FAILED, Cause.DELIVERED_WITH_DIFFERENT_DATA],
       ]);
     });
   });
@@ -172,12 +171,12 @@ describe('filters', () => {
       );
 
       expect(codes(carrierFirst([cruz1, cruz2]))).toEqual([
-        [Outcome.SKIPPED, ReasonCode.OTHER_CARRIER],
-        [Outcome.SKIPPED, ReasonCode.OTHER_CARRIER],
+        [Outcome.SKIPPED, Cause.OTHER_CARRIER],
+        [Outcome.SKIPPED, Cause.OTHER_CARRIER],
       ]);
       expect(codes(dedupeFirst([cruz1, cruz2]))).toEqual([
-        [Outcome.FAILED, ReasonCode.CONFLICTING_DUPLICATE],
-        [Outcome.FAILED, ReasonCode.CONFLICTING_DUPLICATE],
+        [Outcome.FAILED, Cause.CONFLICTING_DUPLICATE],
+        [Outcome.FAILED, Cause.CONFLICTING_DUPLICATE],
       ]);
     });
 

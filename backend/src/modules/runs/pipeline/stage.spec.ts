@@ -1,6 +1,7 @@
-import { failure, reason, ReasonCode } from './reasons.js';
+import { failure, reason } from './reasons.js';
 import { runStages, type Stage } from './stage.js';
-import { fail, ok, Step } from './types/pipeline.types.js';
+import { fail, ok } from './types/pipeline.types.js';
+import { Cause, Step } from '../../../common/types/pipeline.types.js';
 
 const stage = (step: Stage['step'], run: Stage['run']): Stage => ({
   step,
@@ -47,7 +48,7 @@ describe('runStages', () => {
 
   describe('Scenario: a stage fails', () => {
     it('Given a stage that fails, when run, then it stops there with that failure and later stages do not run', async () => {
-      const why = failure(Step.MAP, reason(ReasonCode.MISSING_WEIGHT));
+      const why = failure(Step.MAP, reason(Cause.MISSING_WEIGHT));
       const later = vi.fn(toText.run);
       const onCompleted = vi.fn(async () => {});
       const result = await runStages(
@@ -76,7 +77,7 @@ describe('runStages', () => {
         ok: false,
         failure: expect.objectContaining({
           step: Step.VALIDATE,
-          code: 'INTERNAL_ERROR',
+          cause: 'INTERNAL_ERROR',
           detail: { error: 'boom' },
         }),
       });

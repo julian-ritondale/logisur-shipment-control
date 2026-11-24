@@ -12,7 +12,7 @@ export interface AttemptFilters {
   shipmentId?: string;
   outcome?: AttemptOutcome;
   step?: PipelineStep;
-  reasonCode?: string;
+  cause?: string;
   deliveryNoteNumber?: string;
 }
 
