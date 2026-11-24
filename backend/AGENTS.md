@@ -104,7 +104,7 @@ src/
 
 `delivery-notes` holds only the remito domain model (ADR 0010): its types (raw, stored, normalized, valid) and the Zod parsers for its fields. The pipeline that delivers remitos lives in `runs`, which executes it; its shared vocabulary (`Step`, `Outcome`, `Cause`, `Reason`) is in `common/types/pipeline.types.ts`, so other modules never import from `runs/pipeline/`.
 
-How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.md`](../SOLUCION.md). Decision: `docs/adr/0005-*.md`.
+Decision and design: `docs/adr/0005-*.md`. Data model: `prisma/schema.prisma`. Reason catalogue: `pipeline/reasons.ts`. A summary in Spanish, with the API and a run summary: [`SOLUCION.md`](../SOLUCION.md).
 
 - **The pipeline is a composition, not a service.** `delivery-notes.pipeline.ts` lists which helper does each step, and in which order; read it first. Each helper is a folder of plain functions: no Nest module, no controller, no I/O of its own.
 
@@ -134,7 +134,7 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
 
   Delivering to several carriers would need routing again; see the roadmap in `SOLUCION.md`.
 - **Tracking (ADR 0015):** after loading, `POST /shipments/status-checks` asks the carrier (`CarrierClient.track`) for each `LOADED` shipment it hasn't delivered, and saves `carrierStatus`, `estimatedDelivery` (a `date` column, `YYYY-MM-DD` in the API) and `statusCheckedAt`. `late` is never stored: it's computed when reading (`isLate` in `shipments.mapper.ts`, and the `late` filter in the repository), against the current UTC day.
-- **Idempotency** is by `external_ref` (= `nro_remito`). Keep the rules in `SOLUCION.md` ("Idempotencia y reintentos") intact:
+- **Idempotency** is by `external_ref` (= `nro_remito`). Keep these rules intact (ADR 0005; summarised in `SOLUCION.md`, "Casos raros y errores"):
   - claim a shipment before working on it;
   - treat 409 as loaded;
   - look a reference up before re-POSTing after an ambiguous failure;

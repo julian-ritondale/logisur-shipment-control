@@ -4,20 +4,20 @@ Guidance for coding agents working in this repository.
 
 ## Purpose
 
-LogiSur exports its daily delivery notes (*remitos*) as JSON. This system takes that export, keeps the remitos assigned to the configured carrier (today **Expreso Andino**, the only one with an API), normalizes and validates them, and loads them into the carrier's shipments API reliably: no duplicates, retries on transient failures, and a clear report of what was loaded, skipped or rejected. Domain docs, data and the UI are in Spanish, while code, stored values and backend messages are in English (the frontend translates codes in `frontend/src/lib/labels.ts`). **[`SOLUCION.md`](SOLUCION.md) (Spanish) explains the pipeline end to end**; read it before changing it.
+LogiSur exports its daily delivery notes (*remitos*) as JSON. This system takes that export, keeps the remitos assigned to the configured carrier (today **Expreso Andino**, the only one with an API), normalizes and validates them, and loads them into the carrier's shipments API reliably: no duplicates, retries on transient failures, and a clear report of what was loaded, skipped or rejected. Domain docs, data and the UI are in Spanish, while code, stored values and backend messages are in English (the frontend translates codes in `frontend/src/lib/labels.ts`). **[`SOLUCION.md`](SOLUCION.md) (Spanish) is the challenge deliverable**: the problem chosen, how to run it, how odd data and errors are handled, assumptions, a run summary and the API. The pipeline's design is in ADR 0005 and in the code; read both before changing it.
 
 ## Repository layout
 
 | Path | What it is |
 | --- | --- |
 | `backend/` | NestJS app (ESM, Vitest, oxlint). It has its own `AGENTS.md` with NestJS-specific guidance; read it when working there. |
-| `frontend/` | Vite + React + TypeScript app. |
+| `frontend/` | Vite + React + TypeScript app: the Spanish UI for LogiSur's operations team. Its layout is in `frontend/README.md`; routing, data fetching and language in ADR 0006. |
 | `expreso-api/` | Stdlib-only Python mock of the Expreso Andino API (`expreso_api.py`) plus its contract (`API.md`). **Read-only**, see below. |
 | `data/` | Daily remitos exports (`remitos_YYYY-MM-DD.json`). These are input fixtures, so don't edit them. Format and known data issues are in `data/README.md`. |
 | `docs/adr/` | Architecture Decision Records. |
 | `docker/` | Support files for Compose (`postgres/init.sql` creates the e2e test database). |
 | `docker-compose.yml` | Runs PostgreSQL, the mock API, backend and frontend together. |
-| `SOLUCION.md` | How the remitos → carrier pipeline works, its data model, idempotency and roadmap (Spanish). |
+| `SOLUCION.md` | The challenge deliverable (Spanish): solution, how to run it, edge cases and errors, assumptions, production changes, a run summary, the API and the roadmap ("Cómo seguiría"). |
 
 ## Hard rules
 
@@ -44,7 +44,7 @@ Build what the brief needs today, the smallest way that reads clearly. Abstracti
   - a `CarrierRouter` for carriers with no integration (ADR 0012);
   - a separate carrier adapter and schemas file next to the API client (ADR 0009);
   - a `reports` module that split reads from writes of the same resource (ADR 0008).
-- **Before adding a file, a token or a module, say what it does today.** If the answer is "it will let us...", don't add it; note it in the roadmap in `SOLUCION.md` instead.
+- **Before adding a file, a token or a module, say what it does today.** If the answer is "it will let us...", don't add it; note it in the roadmap in `SOLUCION.md` ("Cómo seguiría" or "Qué cambiaría para producción") instead.
 - **Fewer, well-named files beat many small ones.** One package per REST resource with files named after it. Each carrier integration is four files.
 - **Record what you remove.** When a refactor drops or moves something, update `AGENTS.md`, `backend/AGENTS.md` and `SOLUCION.md` in the same change, and write an ADR if it reverses one, so the next change doesn't bring it back.
 
