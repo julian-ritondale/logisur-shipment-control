@@ -78,6 +78,7 @@ src/
   - `*.response.dto.ts` / `XxxResponseDto` for output, built from the service's result.
 
   Keep them in the feature's `dto/` folder. Shared ones (`IdRequestDto`, `PageRequestDto`, `PageResponseDto`) are in `common/dto/`.
+- **Mappers.** Each package converts between DTOs and its own types in `<feature>.mapper.ts`, as plain functions: `toXxxDto(row)` builds a response DTO, and `fromXxxRequestDto(dto)` turns a request DTO into what the repository takes (listings use `fromPageRequestDto` to split off the cursor). Services call the mapper and never build or pick apart DTOs inline.
 - **Swappable parts are interfaces injected by token.** A dependency that could have several implementations is a small TypeScript `interface` plus a `Symbol` token, both in the same file:
   - where exports are stored (`DELIVERY_NOTES_STORAGE`);
   - how they are read (`DELIVERY_NOTES_READER`);

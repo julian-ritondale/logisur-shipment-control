@@ -17,3 +17,20 @@ export class PageRequestDto {
   @Max(MAX_PAGE_SIZE)
   limit: number = DEFAULT_PAGE_SIZE;
 }
+
+/** A listing request split into its cursor and its filters, as repositories take it. */
+export interface PageQuery<Filters> {
+  filters: Filters;
+  after?: string;
+  limit: number;
+}
+
+export const fromPageRequestDto = <Dto extends PageRequestDto>({
+  after,
+  limit,
+  ...filters
+}: Dto): PageQuery<Omit<Dto, keyof PageRequestDto>> => ({
+  filters,
+  after,
+  limit,
+});

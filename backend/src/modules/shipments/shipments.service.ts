@@ -3,14 +3,10 @@ import {
   toPage,
   type PageResponseDto,
 } from '../../common/dto/page.response.dto.js';
-import type { JsonObject } from '../../common/types/json.js';
 import {
   ShipmentStatus,
   type Shipment,
 } from '../../generated/prisma/client.js';
-import { carrierName, isCarrier } from '../carriers/carrier-registry.js';
-import type { ReasonCode } from '../delivery-notes/pipeline/reasons.js';
-import type { NormalizedDeliveryNote } from '../delivery-notes/types/delivery-note.types.js';
 import type { RunResponseDto } from '../reports/dto/run.response.dto.js';
 import { RunsService } from '../runs/runs.service.js';
 import type { ListShipmentsRequestDto } from './dto/list-shipments.request.dto.js';
@@ -22,24 +18,12 @@ import {
   ShipmentNotFoundError,
   ShipmentNotRetryableError,
 } from './shipments.errors.js';
+import {
+  fromListShipmentsRequestDto,
+  toShipmentDetailDto,
+  toShipmentDto,
+} from './shipments.mapper.js';
 import { ShipmentsRepository } from './shipments.repository.js';
-
-const toResponse = (row: Shipment): ShipmentResponseDto => ({
-  id: row.id,
-  carrier: row.carrier,
-  carrierName: isCarrier(row.carrier) ? carrierName(row.carrier) : row.carrier,
-  deliveryNoteId: row.deliveryNoteId,
-  deliveryNoteNumber: row.externalRef,
-  status: row.status,
-  lastCompletedStep: row.lastCompletedStep ?? undefined,
-  failedStep: row.failedStep ?? undefined,
-  reasonCode: (row.reasonCode as ReasonCode | null) ?? undefined,
-  reason: row.reasonMessage ?? undefined,
-  trackingId: row.trackingId ?? undefined,
-  deliveredAt: row.deliveredAt ?? undefined,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
-});
 
 @Injectable()
 export class ShipmentsService {
@@ -48,26 +32,19 @@ export class ShipmentsService {
     private readonly runs: RunsService,
   ) {}
 
-  async list({
-    after,
-    limit,
-    ...filters
-  }: ListShipmentsRequestDto): Promise<PageResponseDto<ShipmentResponseDto>> {
+  async list(
+    request: ListShipmentsRequestDto,
+  ): Promise<PageResponseDto<ShipmentResponseDto>> {
+    const { filters, after, limit } = fromListShipmentsRequestDto(request);
     return toPage(
       await this.shipments.list(filters, after, limit),
       limit,
-      toResponse,
+      toShipmentDto,
     );
   }
 
   async get(id: string): Promise<ShipmentDetailResponseDto> {
-    const row = await this.find(id);
-    return Object.assign(toResponse(row), {
-      normalized:
-        (row.normalized as unknown as NormalizedDeliveryNote | null) ??
-        undefined,
-      payload: (row.payload as JsonObject | null) ?? undefined,
-    });
+    return toShipmentDetailDto(await this.find(id));
   }
 
   async retry(id: string): Promise<RunResponseDto> {
