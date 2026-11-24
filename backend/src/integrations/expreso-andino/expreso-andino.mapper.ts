@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
+import { z } from 'zod';
 import type { ApiResponse } from '../../common/http/api-client.js';
 import type { JsonObject } from '../../common/types/json.js';
 import {
@@ -12,14 +13,28 @@ import type {
   DeliveryNoteField,
   ValidDeliveryNote,
 } from '../../modules/delivery-notes/types/delivery-note.types.js';
-import {
-  PROVINCES,
-  SEARCH,
-  SHIPMENT,
-  VALIDATION_ERROR,
-} from './expreso-andino.schemas.js';
 
-/** Our remitos ↔ Expreso Andino's API: request bodies out, answers in. */
+/** Our remitos ↔ Expreso Andino's API (`expreso-api/API.md`): request bodies out, answers in. */
+
+// Response bodies, as API.md describes them.
+/** `GET /v1/provinces` → 200. */
+const PROVINCES = z.object({ provinces: z.array(z.string()) });
+/** `POST /v1/shipments` → 201, and 409 (duplicate), which carries the existing one. */
+const SHIPMENT = z.object({ tracking_id: z.string() });
+/** `POST /v1/shipments` → 422. */
+const VALIDATION_ERROR = z.object({
+  details: z
+    .array(z.object({ field: z.string(), message: z.string() }))
+    .default([]),
+});
+/** `GET /v1/shipments?external_ref=` → 200. */
+const SEARCH = z.object({
+  items: z.array(
+    z.object({ tracking_id: z.string(), external_ref: z.string() }),
+  ),
+});
+/** The one field of a `POST /v1/shipments` body we read back. */
+const SHIPMENT_REFERENCE = z.object({ external_ref: z.string() });
 
 const SERVICES: Record<Service, string> = {
   [Service.STANDARD]: 'standard',
@@ -77,6 +92,10 @@ const CREATE_ANSWERS: Partial<Record<number, (body: unknown) => Try>> = {
   [HttpStatus.UNPROCESSABLE_ENTITY]: rejected,
   [HttpStatus.UNAUTHORIZED]: () => ({ status: DeliveryStatus.UNAUTHORIZED }),
 };
+
+/** The `external_ref` of a stored `POST /v1/shipments` body. */
+export const referenceOf = (shipment: JsonObject): string =>
+  SHIPMENT_REFERENCE.parse(shipment).external_ref;
 
 export const toShipmentRequest = (note: ValidDeliveryNote): JsonObject => ({
   external_ref: note.number,

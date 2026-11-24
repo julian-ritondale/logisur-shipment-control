@@ -5,8 +5,7 @@ import {
 } from '../../modules/carriers/carrier-client.js';
 import { Service } from '../../modules/delivery-notes/schemas/delivery-note.schemas.js';
 import type { ValidDeliveryNote } from '../../modules/delivery-notes/types/delivery-note.types.js';
-import { ExpresoAndinoClient } from './expreso-andino-client.js';
-import { ExpresoAndinoCarrier } from './expreso-andino.carrier.js';
+import { ExpresoAndinoClient } from './expreso-andino.client.js';
 
 type Reply = Response | Error;
 
@@ -34,12 +33,14 @@ const json = (status: number, body: unknown) =>
   });
 
 const client = (fetchFn: ReturnType<typeof scriptedFetch>['fetchFn']) =>
-  new ExpresoAndinoCarrier(
-    new ExpresoAndinoClient(
-      { baseUrl: 'http://carrier.test/', apiKey: 'secret-key' },
-      fetchFn,
-    ),
-    { attempts: 4, backoff: { delay: 0, jitter: 'none' } },
+  new ExpresoAndinoClient(
+    {
+      baseUrl: 'http://carrier.test/',
+      apiKey: 'secret-key',
+      attempts: 4,
+      backoff: { delay: 0, jitter: 'none' },
+    },
+    fetchFn,
   );
 
 const request: JsonObject = {
@@ -59,7 +60,7 @@ const request: JsonObject = {
 const routes = (calls: { method: string; url: string }[]) =>
   calls.map((c) => `${c.method} ${c.url.replace('http://carrier.test', '')}`);
 
-describe('ExpresoAndinoCarrier', () => {
+describe('ExpresoAndinoClient', () => {
   describe('Scenario: mapping a valid remito to the API format', () => {
     const remito: ValidDeliveryNote = {
       number: 'R-1',
@@ -308,6 +309,34 @@ describe('ExpresoAndinoCarrier', () => {
       expect(error).toBeInstanceOf(CarrierRequestError);
       expect(error).toMatchObject({ kind: DeliveryStatus.UNAVAILABLE });
       expect(calls).toHaveLength(4);
+    });
+  });
+
+  describe('Scenario: one method per endpoint of API.md', () => {
+    it('Given getShipment, when called, then it GETs /v1/shipments/{tracking_id} with the API key', async () => {
+      const { fetchFn, calls } = scriptedFetch(
+        json(200, { tracking_id: 'AND1', status: 'IN_TRANSIT' }),
+      );
+      await expect(client(fetchFn).getShipment('AND1')).resolves.toEqual({
+        status: 200,
+        ok: true,
+        body: { tracking_id: 'AND1', status: 'IN_TRANSIT' },
+      });
+      expect(routes(calls)).toEqual(['GET /v1/shipments/AND1']);
+      expect(calls[0].init.headers).toMatchObject({
+        'X-Api-Key': 'secret-key',
+      });
+    });
+
+    it('Given a 503 with a text body, when an endpoint is called, then the answer comes back as it is, not judged', async () => {
+      const { fetchFn } = scriptedFetch(
+        new Response('Service Unavailable', { status: 503 }),
+      );
+      await expect(client(fetchFn).listProvinces()).resolves.toEqual({
+        status: 503,
+        ok: false,
+        body: 'Service Unavailable',
+      });
     });
   });
 });

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ExpresoAndinoClient } from './expreso-andino-client.js';
-import { ExpresoAndinoCarrier } from './expreso-andino.carrier.js';
+import { ExpresoAndinoClient } from './expreso-andino.client.js';
 
 @Module({
   providers: [
@@ -14,13 +13,7 @@ import { ExpresoAndinoCarrier } from './expreso-andino.carrier.js';
           apiKey: config.getOrThrow<string>('EXPRESO_API_KEY'),
         }),
     },
-    {
-      provide: ExpresoAndinoCarrier,
-      inject: [ExpresoAndinoClient],
-      useFactory: (client: ExpresoAndinoClient) =>
-        new ExpresoAndinoCarrier(client),
-    },
   ],
-  exports: [ExpresoAndinoCarrier],
+  exports: [ExpresoAndinoClient],
 })
 export class ExpresoAndinoModule {}

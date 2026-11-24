@@ -15,3 +15,4 @@ Significant decisions for this project are recorded here, one per file, using th
 | [0005](0005-functional-pipeline-persistence-and-idempotent-delivery.md) | Functional pipeline, per-step persistence and idempotent delivery | Accepted |
 | [0007](0007-generic-api-client-and-carrier-integration-layout.md) | Generic API client and carrier integration layout | Accepted |
 | [0008](0008-one-backend-module-per-rest-resource.md) | One backend module per REST resource | Accepted |
+| [0009](0009-carrier-integrations-as-client-and-mapper.md) | Carrier integrations as a client and a mapper | Accepted |

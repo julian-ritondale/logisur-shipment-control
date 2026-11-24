@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ExpresoAndinoCarrier } from '../../integrations/expreso-andino/expreso-andino.carrier.js';
+import { ExpresoAndinoClient } from '../../integrations/expreso-andino/expreso-andino.client.js';
 import { ExpresoAndinoModule } from '../../integrations/expreso-andino/expreso-andino.module.js';
 import { CARRIER_ROUTER, MapCarrierRouter } from './carrier-router.js';
 
@@ -13,8 +13,8 @@ import { CARRIER_ROUTER, MapCarrierRouter } from './carrier-router.js';
   providers: [
     {
       provide: CARRIER_ROUTER,
-      inject: [ExpresoAndinoCarrier],
-      useFactory: (expresoAndino: ExpresoAndinoCarrier) =>
+      inject: [ExpresoAndinoClient],
+      useFactory: (expresoAndino: ExpresoAndinoClient) =>
         new MapCarrierRouter({ EXPRESO_ANDINO: expresoAndino }),
     },
   ],
