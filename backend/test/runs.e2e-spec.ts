@@ -15,14 +15,14 @@ import { PROVINCES } from './../src/modules/delivery-notes/schemas/delivery-note
 import type { ValidDeliveryNote } from './../src/modules/delivery-notes/types/delivery-note.types.js';
 import { resetDatabase } from './database.js';
 
-/** Stands in for the carrier: scripted outcomes per delivery note, DELIVERED otherwise. */
+/** Stands in for the carrier: scripted outcomes per delivery note, LOADED otherwise. */
 class FakeCarrier implements CarrierClient {
   readonly outcomes = new Map<string, DeliveryOutcome[]>();
   readonly provinces = vi.fn(async () => [...PROVINCES]);
   readonly deliver = vi.fn(
     async (request: JsonObject): Promise<DeliveryOutcome> =>
       this.outcomes.get(request.ref as string)?.shift() ?? {
-        status: DeliveryStatus.DELIVERED,
+        status: DeliveryStatus.LOADED,
         trackingId: `TRK-${request.ref as string}`,
       },
   );
@@ -59,7 +59,7 @@ const deliveryNote = (
   ...overrides,
 });
 
-/** Every case of the sample export, small: 4 delivered, 4 failed, 4 skipped. */
+/** Every case of the sample export, small: 4 loaded, 4 failed, 4 skipped. */
 const EXPORT = [
   deliveryNote('R-1', 'EXPRESO ANDINO'),
   deliveryNote('R-2', 'Cruz del Norte'),
@@ -141,11 +141,11 @@ describe('Runs, reports and shipments (e2e)', () => {
         carrier: 'EXPRESO_ANDINO',
         carrierName: 'Expreso Andino',
         status: 'COMPLETED_WITH_FAILURES',
-        totals: { total: 12, delivered: 4, failed: 4, skipped: 4 },
+        totals: { total: 12, loaded: 4, failed: 4, skipped: 4 },
       });
       expect(body.breakdown).toEqual(
         expect.arrayContaining([
-          { outcome: 'DELIVERED', step: 'DELIVER', count: 4 },
+          { outcome: 'LOADED', step: 'DELIVER', count: 4 },
           {
             outcome: 'FAILED',
             step: 'FILTER',
@@ -235,7 +235,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       ]);
     });
 
-    it('Given dirty values, when delivered, then the carrier receives them normalized', async () => {
+    it('Given dirty values, when loaded, then the carrier receives them normalized', async () => {
       await run();
       expect(carrier.deliver.mock.calls.map(([sent]) => sent)).toEqual([
         {
@@ -266,12 +266,12 @@ describe('Runs, reports and shipments (e2e)', () => {
       expect(carrier.provinces).toHaveBeenCalledTimes(1);
     });
 
-    it('Given a delivered shipment, when fetched, then it keeps the output of every step', async () => {
+    it('Given a loaded shipment, when fetched, then it keeps the output of every step', async () => {
       await run();
       const { id } = await shipmentOf('R-1');
       const { body } = await http().get(`/shipments/${id}`).expect(200);
       expect(body).toMatchObject({
-        status: 'DELIVERED',
+        status: 'LOADED',
         lastCompletedStep: 'DELIVER',
         trackingId: 'TRK-R-1',
         normalized: { weightKg: { status: 'VALID', value: 145.1 } },
@@ -289,7 +289,7 @@ describe('Runs, reports and shipments (e2e)', () => {
   });
 
   describe('Scenario: idempotency', () => {
-    it('Given an export already run, when it is run again, then nothing is sent twice and the delivered ones count as delivered', async () => {
+    it('Given an export already run, when it is run again, then nothing is sent twice and the loaded ones count as loaded', async () => {
       const exportId = await uploadExport();
       await http().post('/runs').send({ exportId }).expect(201);
       carrier.deliver.mockClear();
@@ -301,31 +301,31 @@ describe('Runs, reports and shipments (e2e)', () => {
       expect(carrier.deliver).not.toHaveBeenCalled();
       expect(body.totals).toEqual({
         total: 12,
-        delivered: 4,
+        loaded: 4,
         failed: 4,
         skipped: 4,
       });
       expect(body.breakdown).toContainEqual({
-        outcome: 'DELIVERED',
+        outcome: 'LOADED',
         step: 'FILTER',
         count: 4,
       });
     });
 
-    it('Given the carrier already had the shipment, when delivered, then it is simply delivered', async () => {
+    it('Given the carrier already had the shipment, when loaded, then it is simply loaded', async () => {
       carrier.outcomes.set('R-1', [
-        { status: DeliveryStatus.DELIVERED, trackingId: 'TRK-OLD' },
+        { status: DeliveryStatus.LOADED, trackingId: 'TRK-OLD' },
       ]);
       const { id } = await run([deliveryNote('R-1', 'EXPRESO ANDINO')]);
       expect(await attempts(`runId=${id}`)).toEqual([
         expect.objectContaining({
-          outcome: 'DELIVERED',
+          outcome: 'LOADED',
           trackingId: 'TRK-OLD',
         }),
       ]);
     });
 
-    it('Given a delivery note delivered earlier, when it comes again with different data, then it fails instead of being sent twice', async () => {
+    it('Given a delivery note loaded earlier, when it comes again with different data, then it fails instead of being sent twice', async () => {
       await run([deliveryNote('R-1', 'EXPRESO ANDINO')]);
       const { id } = await run([
         deliveryNote('R-1', 'EXPRESO ANDINO', { bultos: 9 }),
@@ -333,7 +333,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       expect(await attempts(`runId=${id}`)).toEqual([
         expect.objectContaining({
           outcome: 'FAILED',
-          cause: 'DELIVERED_WITH_DIFFERENT_DATA',
+          cause: 'LOADED_WITH_DIFFERENT_DATA',
           retryable: false,
         }),
       ]);
@@ -364,14 +364,14 @@ describe('Runs, reports and shipments (e2e)', () => {
       expect(body).toMatchObject({
         kind: 'RETRY',
         parentRunId: first.id,
-        totals: { total: 1, delivered: 1 },
+        totals: { total: 1, loaded: 1 },
       });
       expect(carrier.provinces).not.toHaveBeenCalled();
       expect(carrier.deliver).toHaveBeenCalledExactlyOnceWith(stored);
       expect(await attempts(`runId=${body.id}`)).toEqual([
         expect.objectContaining({
           fromStep: 'DELIVER',
-          outcome: 'DELIVERED',
+          outcome: 'LOADED',
           trackingId: 'TRK-R-1',
         }),
       ]);
@@ -402,14 +402,14 @@ describe('Runs, reports and shipments (e2e)', () => {
       await http().post(`/runs/${first.id}/retries`).expect(409);
     });
 
-    it('Given a delivered shipment, when it is retried, then it answers 409', async () => {
+    it('Given a loaded shipment, when it is retried, then it answers 409', async () => {
       await run([deliveryNote('R-1', 'EXPRESO ANDINO')]);
       const { id } = await shipmentOf('R-1');
       const { body } = await http()
         .post(`/shipments/${id}/retries`)
         .expect(409);
       expect(body.message).toBe(
-        `Shipment "${id}" is delivered; only failed shipments can be retried`,
+        `Shipment "${id}" is loaded; only failed shipments can be retried`,
       );
     });
   });
@@ -426,7 +426,7 @@ describe('Runs, reports and shipments (e2e)', () => {
       ).toHaveLength(3);
     });
 
-    it('Given the carrier rejects a shipment, when delivered, then the reason names our field in business terms', async () => {
+    it('Given the carrier rejects a shipment, when loaded, then the reason names our field in business terms', async () => {
       carrier.outcomes.set('R-1', [
         {
           status: DeliveryStatus.REJECTED,
@@ -506,7 +506,7 @@ describe('Runs, reports and shipments (e2e)', () => {
         ]),
       ).toEqual([
         ['FAILED', 'CARRIER_UNAVAILABLE'],
-        ['DELIVERED', undefined],
+        ['LOADED', undefined],
       ]);
     });
 

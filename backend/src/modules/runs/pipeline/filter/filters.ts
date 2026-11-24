@@ -25,7 +25,7 @@ export type Decision =
   | { outcome: typeof Outcome.SKIPPED; reason: Reason }
   | { outcome: typeof Outcome.FAILED; reason: Reason }
   | {
-      outcome: typeof Outcome.DELIVERED;
+      outcome: typeof Outcome.LOADED;
       shipmentId: string;
       trackingId: string;
     };
@@ -164,32 +164,32 @@ export const dedupeWithinExport = (): Filter => (candidates) => {
   return each((candidate) => decisions.get(candidate))(candidates);
 };
 
-export interface DeliveredShipment {
+export interface LoadedShipment {
   shipmentId: string;
   trackingId: string;
   contentHash: string;
 }
 
 /**
- * Delivery notes an earlier run already delivered. With the same data they are
- * delivered (idempotently); with different data they fail, since the carrier has the old version.
+ * Delivery notes an earlier run already loaded. With the same data they are
+ * loaded (idempotently); with different data they fail, since the carrier has the old version.
  */
-export const alreadyDelivered = (
-  delivered: ReadonlyMap<string, DeliveredShipment>,
+export const alreadyLoaded = (
+  loaded: ReadonlyMap<string, LoadedShipment>,
 ): Filter =>
   each((candidate) => {
-    const previous = delivered.get(numberOf(candidate) ?? '');
+    const previous = loaded.get(numberOf(candidate) ?? '');
     if (!previous) {
       return undefined;
     }
     return previous.contentHash === contentHash(candidate.normalized)
       ? {
-          outcome: Outcome.DELIVERED,
+          outcome: Outcome.LOADED,
           shipmentId: previous.shipmentId,
           trackingId: previous.trackingId,
         }
       : stop(
-          reason(Cause.DELIVERED_WITH_DIFFERENT_DATA, {
+          reason(Cause.LOADED_WITH_DIFFERENT_DATA, {
             value: previous.trackingId,
           }),
         );

@@ -3,7 +3,7 @@ import { Carrier } from '../../../carriers/carrier-registry.js';
 import { normalize } from '../normalizer/normalize.js';
 import { contentHash } from './content-hash.js';
 import {
-  alreadyDelivered,
+  alreadyLoaded,
   byCarrier,
   composeFilters,
   dedupeWithinExport,
@@ -110,10 +110,10 @@ describe('filters', () => {
     });
   });
 
-  describe('Scenario: delivery notes delivered by an earlier run', () => {
-    it('Given the same data, when filtered, then it counts as delivered with its tracking id (idempotent)', () => {
+  describe('Scenario: delivery notes loaded by an earlier run', () => {
+    it('Given the same data, when filtered, then it counts as loaded with its tracking id (idempotent)', () => {
       const sent = candidate({ nro_remito: 'R-1' });
-      const delivered = new Map([
+      const loaded = new Map([
         [
           'R-1',
           {
@@ -123,8 +123,8 @@ describe('filters', () => {
           },
         ],
       ]);
-      expect(alreadyDelivered(delivered)([sent]).decided[0].decision).toEqual({
-        outcome: Outcome.DELIVERED,
+      expect(alreadyLoaded(loaded)([sent]).decided[0].decision).toEqual({
+        outcome: Outcome.LOADED,
         shipmentId: 's-1',
         trackingId: 'AND123',
       });
@@ -132,14 +132,14 @@ describe('filters', () => {
 
     it('Given different data now, when filtered, then it fails so someone corrects it with the carrier', () => {
       const changed = candidate({ nro_remito: 'R-1', bultos: 9 });
-      const delivered = new Map([
+      const loaded = new Map([
         [
           'R-1',
           { shipmentId: 's-1', trackingId: 'AND123', contentHash: 'old' },
         ],
       ]);
-      expect(codes(alreadyDelivered(delivered)([changed]))).toEqual([
-        [Outcome.FAILED, Cause.DELIVERED_WITH_DIFFERENT_DATA],
+      expect(codes(alreadyLoaded(loaded)([changed]))).toEqual([
+        [Outcome.FAILED, Cause.LOADED_WITH_DIFFERENT_DATA],
       ]);
     });
   });

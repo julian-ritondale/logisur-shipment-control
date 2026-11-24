@@ -19,7 +19,7 @@ class FakeCarrier implements CarrierClient {
   readonly provinces = vi.fn(async () => ['Buenos Aires', 'Córdoba']);
   readonly deliver = vi.fn(
     async (request: JsonObject): Promise<DeliveryOutcome> => ({
-      status: DeliveryStatus.DELIVERED,
+      status: DeliveryStatus.LOADED,
       trackingId: `TRK-${request.ref as string}`,
     }),
   );
@@ -63,11 +63,11 @@ describe('deliveryNotesPipeline', () => {
     carrier = new FakeCarrier();
   });
 
-  const pipeline = (delivered = new Map()) =>
+  const pipeline = (loaded = new Map()) =>
     deliveryNotesPipeline({
       carrier: Carrier.EXPRESO_ANDINO,
       client: carrier,
-      delivered,
+      loaded,
     });
 
   const process = (p: ReturnType<typeof pipeline>, raw: JsonObject) =>
@@ -76,7 +76,7 @@ describe('deliveryNotesPipeline', () => {
   describe('Scenario: selecting the delivery notes of an export (NORMALIZE → FILTER)', () => {
     it('Given an export with every case, when selected, then only this carrier’s numbered, unique, unsent ones go on', () => {
       const sent = deliveryNote('R-5');
-      const delivered = new Map([
+      const loaded = new Map([
         [
           'R-5',
           {
@@ -86,7 +86,7 @@ describe('deliveryNotesPipeline', () => {
           },
         ],
       ]);
-      const { kept, decided } = pipeline(delivered).select(
+      const { kept, decided } = pipeline(loaded).select(
         stored(
           deliveryNote('R-1'),
           deliveryNote('R-2', { transportista: 'Cruz del Norte' }),
@@ -108,13 +108,13 @@ describe('deliveryNotesPipeline', () => {
         [6, Outcome.SKIPPED],
         [2, Outcome.FAILED],
         [4, Outcome.SKIPPED],
-        [5, Outcome.DELIVERED],
+        [5, Outcome.LOADED],
       ]);
     });
   });
 
   describe('Scenario: one delivery note through VALIDATE → MAP → DELIVER', () => {
-    it('Given a valid delivery note, when its stages run, then it is delivered with a tracking id', async () => {
+    it('Given a valid delivery note, when its stages run, then it is loaded with a tracking id', async () => {
       expect(await process(pipeline(), deliveryNote('R-1'))).toEqual({
         ok: true,
         value: { trackingId: 'TRK-R-1' },
@@ -143,7 +143,7 @@ describe('deliveryNotesPipeline', () => {
       expect(carrier.deliver).not.toHaveBeenCalled();
     });
 
-    it('Given the carrier refuses our credentials, when the next delivery note is delivered, then the carrier is not called again', async () => {
+    it('Given the carrier refuses our credentials, when the next delivery note is loaded, then the carrier is not called again', async () => {
       carrier.deliver.mockResolvedValueOnce({
         status: DeliveryStatus.UNAUTHORIZED,
       });

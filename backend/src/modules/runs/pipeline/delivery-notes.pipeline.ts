@@ -4,12 +4,12 @@ import type { StoredDeliveryNote } from '../../delivery-notes/types/delivery-not
 import { carrierAccess } from './carrier-access.js';
 import { deliverer } from './deliverer/deliverer.js';
 import {
-  alreadyDelivered,
+  alreadyLoaded,
   byCarrier,
   composeFilters,
   dedupeWithinExport,
   hasNumber,
-  type DeliveredShipment,
+  type LoadedShipment,
   type FilterResult,
 } from './filter/filters.js';
 import { mapper } from './mapper/mapper.js';
@@ -20,8 +20,8 @@ import { validator } from './validator/validate.js';
 export interface DeliveryNotesPipelineConfig {
   carrier: Carrier;
   client: CarrierClient;
-  /** Shipments already delivered to this carrier, by delivery note number. */
-  delivered?: ReadonlyMap<string, DeliveredShipment>;
+  /** Shipments already loaded into this carrier, by delivery note number. */
+  loaded?: ReadonlyMap<string, LoadedShipment>;
 }
 
 export interface DeliveryNotesPipeline {
@@ -35,7 +35,7 @@ export interface DeliveryNotesPipeline {
  * The delivery notes pipeline: which helper does each step, in order.
  *
  *   NORMALIZE  normalizer/  read every delivery note of the export
- *   FILTER     filter/      this carrier, with a number, once, not delivered before
+ *   FILTER     filter/      this carrier, with a number, once, not loaded before
  *   VALIDATE   validator/   everything the carrier requires is there
  *   MAP        mapper/      in the carrier's request format
  *   DELIVER    deliverer/   to the carrier, idempotently
@@ -48,7 +48,7 @@ export function deliveryNotesPipeline(
     byCarrier(config.carrier),
     hasNumber(),
     dedupeWithinExport(),
-    alreadyDelivered(config.delivered ?? new Map()),
+    alreadyLoaded(config.loaded ?? new Map()),
   );
 
   return {

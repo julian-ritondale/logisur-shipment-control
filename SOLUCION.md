@@ -133,7 +133,7 @@ const filter = composeFilters(
   byCarrier(config.carrier),              // solo el transportista de la corrida
   hasNumber(),                            // sin número no hay referencia para el transportista
   dedupeWithinExport(),                   // repetidos en la exportación
-  alreadyDelivered(config.delivered),     // ya enviados en corridas anteriores
+  alreadyLoaded(config.loaded),     // ya enviados en corridas anteriores
 );
 ```
 
@@ -142,7 +142,7 @@ const filter = composeFilters(
 | `byCarrier` | Otro transportista: omitido (`OTHER_CARRIER`). Retira el cliente: omitido (`CUSTOMER_PICKUP`). Sin transportista o desconocido: fallido (`MISSING_CARRIER`, `UNKNOWN_CARRIER`). | Tabla de decisiones |
 | `hasNumber` | Sin número de remito: fallido (`MISSING_DELIVERY_NOTE_NUMBER`). | — |
 | `dedupeWithinExport` | Copias idénticas: se envía una sola vez y el resto se omite (`DUPLICATE_IN_EXPORT`). Mismo número con datos distintos: todas fallan (`CONFLICTING_DUPLICATE`). | — |
-| `alreadyDelivered` | Ya enviado con los mismos datos: **enviado** (idempotente). Con datos distintos: fallido (`DELIVERED_WITH_DIFFERENT_DATA`). | Hash del remito normalizado |
+| `alreadyLoaded` | Ya enviado con los mismos datos: **enviado** (idempotente). Con datos distintos: fallido (`LOADED_WITH_DIFFERENT_DATA`). | Hash del remito normalizado |
 
 El orden importa, y los tests lo muestran. Si `dedupeWithinExport` va primero, un duplicado conflictivo de otro transportista falla. Si `byCarrier` va primero, ese mismo remito simplemente se omite.
 
@@ -158,7 +158,7 @@ El orden importa, y los tests lo muestran. Si `dedupeWithinExport` va primero, u
   - si falla, `failedStep` y el motivo.
 - **Por cada remito y corrida** se guarda un intento (`Attempt`), con estos datos:
   - desde qué paso arrancó y hasta cuál llegó;
-  - el resultado (`DELIVERED`, `SKIPPED` o `FAILED`);
+  - el resultado (`LOADED`, `SKIPPED` o `FAILED`);
   - el motivo en términos de negocio;
   - todos los problemas encontrados;
   - el tracking id;
@@ -191,9 +191,9 @@ erDiagram
 {
   "id": "…", "kind": "INITIAL", "status": "COMPLETED_WITH_FAILURES",
   "carrier": "EXPRESO_ANDINO", "carrierName": "Expreso Andino",
-  "totals": { "total": 51, "delivered": 20, "failed": 3, "skipped": 28 },
+  "totals": { "total": 51, "loaded": 20, "failed": 3, "skipped": 28 },
   "breakdown": [
-    { "outcome": "DELIVERED", "step": "DELIVER", "count": 20 },
+    { "outcome": "LOADED", "step": "DELIVER", "count": 20 },
     { "outcome": "FAILED", "step": "VALIDATE", "cause": "MISSING_POSTAL_CODE", "count": 1 },
     { "outcome": "SKIPPED", "step": "FILTER", "cause": "OTHER_CARRIER", "count": 19 }
   ]
@@ -220,7 +220,7 @@ Estados de una corrida: `RUNNING`, `COMPLETED`, `COMPLETED_WITH_FAILURES` y `FAI
 | `MISSING_CARRIER` / `UNKNOWN_CARRIER` | FILTER | fallido | Unrecognized carrier "…"; check the delivery note | Corregir y volver a subir |
 | `MISSING_DELIVERY_NOTE_NUMBER` | FILTER | fallido | The delivery note has no number | Corregir y volver a subir |
 | `CONFLICTING_DUPLICATE` | FILTER | fallido | … appears 2 times in the export with different data … | Corregir y volver a subir |
-| `DELIVERED_WITH_DIFFERENT_DATA` | FILTER | fallido | Already delivered …, but this export has different data | Corregir con el transportista |
+| `LOADED_WITH_DIFFERENT_DATA` | FILTER | fallido | Already loaded into the carrier …, but this export has different data | Corregir con el transportista |
 | `MISSING_*` (destinatario, dirección, ciudad, provincia, código postal, bultos, peso, servicio) | VALIDATE | fallido | Postal code is missing | Corregir y volver a subir |
 | `UNKNOWN_PROVINCE`, `INVALID_PACKAGES`, `INVALID_WEIGHT`, `INVALID_DECLARED_VALUE`, `UNKNOWN_SERVICE` | VALIDATE | fallido | Number of packages "dos" is not a whole number | Corregir y volver a subir |
 | `TOO_FEW_PACKAGES`, `NON_POSITIVE_WEIGHT`, `NEGATIVE_DECLARED_VALUE` | VALIDATE | fallido | Must have at least 1 package (has 0) | Corregir y volver a subir |
@@ -245,9 +245,9 @@ Estados de una corrida: `RUNNING`, `COMPLETED`, `COMPLETED_WITH_FAILURES` y `FAI
 
 ### Cómo lo usamos (genérico: nunca depende de referencias puntuales)
 
-**"Ya existía" no es un caso aparte.** Si el transportista ya tenía el envío, el resultado es el mismo que si se hubiera creado ahora: `DELIVERED` con su tracking id. Eso es lo que significa que sea idempotente.
+**"Ya existía" no es un caso aparte.** Si el transportista ya tenía el envío, el resultado es el mismo que si se hubiera creado ahora: `LOADED` con su tracking id. Eso es lo que significa que sea idempotente.
 
-1. **Nuestra base primero.** Si (transportista, remito) ya está `DELIVERED` con los mismos datos, cuenta como enviado sin llamar a la API. Si llega con datos distintos (el hash del remito normalizado no coincide), se informa en lugar de enviarse.
+1. **Nuestra base primero.** Si (transportista, remito) ya está `LOADED` con los mismos datos, cuenta como enviado sin llamar a la API. Si llega con datos distintos (el hash del remito normalizado no coincide), se informa en lugar de enviarse.
 2. **Reclamo atómico.** Antes de procesar un envío se lo pasa a `PROCESSING` con un `UPDATE … WHERE status IN (PENDING, FAILED)`. Si dos reintentos llegan a la vez, solo uno lo procesa.
 3. **Envío:**
    - `201` o `409`: enviado, con el tracking.

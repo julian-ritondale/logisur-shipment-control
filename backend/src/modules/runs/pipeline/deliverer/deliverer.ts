@@ -10,7 +10,7 @@ import type { Stage } from '../stage.js';
 import { fail, ok, type Result } from '../types/pipeline.types.js';
 import { Cause, Step } from '../../../../common/types/pipeline.types.js';
 
-export interface Delivered {
+export interface Loaded {
   trackingId: string;
 }
 
@@ -24,11 +24,9 @@ const describe = (rejections: CarrierRejection[]) =>
 type OutcomeOf<S> = Extract<DeliveryOutcome, { status: S }>;
 
 const RESULTS: {
-  [S in DeliveryOutcome['status']]: (
-    outcome: OutcomeOf<S>,
-  ) => Result<Delivered>;
+  [S in DeliveryOutcome['status']]: (outcome: OutcomeOf<S>) => Result<Loaded>;
 } = {
-  DELIVERED: ({ trackingId }) => ok({ trackingId }),
+  LOADED: ({ trackingId }) => ok({ trackingId }),
   REJECTED: ({ rejections }) =>
     fail(
       failure(
@@ -42,14 +40,13 @@ const RESULTS: {
     fail(failure(Step.DELIVER, reason(Cause.CARRIER_UNAVAILABLE), { detail })),
 };
 
-export const fromDeliveryOutcome = (
-  outcome: DeliveryOutcome,
-): Result<Delivered> => RESULTS[outcome.status](outcome as never);
+export const fromDeliveryOutcome = (outcome: DeliveryOutcome): Result<Loaded> =>
+  RESULTS[outcome.status](outcome as never);
 
 /** DELIVER: sends the request through the carrier's idempotent client. */
 export const deliverer = (
   carrier: CarrierAccess,
-): Stage<JsonObject, Delivered> => ({
+): Stage<JsonObject, Loaded> => ({
   step: Step.DELIVER,
   run: async (request) => {
     const blocked = carrier.refused(Step.DELIVER);

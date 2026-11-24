@@ -64,15 +64,15 @@ export type Try =
 
 const transient = (detail: JsonObject): Try => ({ status: TRANSIENT, detail });
 
-const delivered = (trackingId: string): Try => ({
-  status: DeliveryStatus.DELIVERED,
+const loaded = (trackingId: string): Try => ({
+  status: DeliveryStatus.LOADED,
   trackingId,
 });
 
 const created = (body: unknown): Try => {
   const shipment = SHIPMENT.safeParse(body);
   return shipment.success
-    ? delivered(shipment.data.tracking_id)
+    ? loaded(shipment.data.tracking_id)
     : transient({ reason: 'no tracking_id in the answer' });
 };
 
@@ -95,7 +95,7 @@ const rejected = (body: unknown): Try => {
   };
 };
 
-/** `POST /v1/shipments` answers; anything else (500, 503, ...) is transient. 409 means it already exists: delivered. */
+/** `POST /v1/shipments` answers; anything else (500, 503, ...) is transient. 409 means it already exists: loaded. */
 const CREATE_ANSWERS: Partial<Record<number, (body: unknown) => Try>> = {
   [HttpStatus.CREATED]: created,
   [HttpStatus.CONFLICT]: created,
@@ -163,7 +163,7 @@ export const fromSearchResponse =
     const match = search.data.items.find(
       (item) => item.external_ref === reference,
     );
-    return match && delivered(match.tracking_id);
+    return match && loaded(match.tracking_id);
   };
 
 /** A network error or a timeout: the request may or may not have arrived. */

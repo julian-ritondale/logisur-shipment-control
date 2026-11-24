@@ -8,10 +8,10 @@ import { Cause, Step } from '../../../../common/types/pipeline.types.js';
 
 describe('delivery outcomes', () => {
   describe('Scenario: the carrier has the shipment', () => {
-    it('Given DELIVERED (created now, or the carrier already had it), when translated, then it is delivered with its tracking id', () => {
+    it('Given LOADED (created now, or the carrier already had it), when translated, then it is loaded with its tracking id', () => {
       expect(
         fromDeliveryOutcome({
-          status: DeliveryStatus.DELIVERED,
+          status: DeliveryStatus.LOADED,
           trackingId: 'AND1',
         }),
       ).toEqual({

@@ -7,7 +7,7 @@ import {
 
 export class RunTotalsResponseDto {
   total: number;
-  delivered: number;
+  loaded: number;
   failed: number;
   skipped: number;
 }

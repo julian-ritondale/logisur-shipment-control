@@ -30,7 +30,7 @@ export const toShipmentDto = (row: Shipment): ShipmentResponseDto => ({
   cause: (row.cause as Cause | null) ?? undefined,
   reason: row.reasonMessage ?? undefined,
   trackingId: row.trackingId ?? undefined,
-  deliveredAt: row.deliveredAt ?? undefined,
+  loadedAt: row.loadedAt ?? undefined,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });

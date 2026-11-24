@@ -5,7 +5,7 @@ import type {
 } from '../delivery-notes/types/delivery-note.types.js';
 
 export const DeliveryStatus = {
-  DELIVERED: 'DELIVERED',
+  LOADED: 'LOADED',
   REJECTED: 'REJECTED',
   UNAUTHORIZED: 'UNAUTHORIZED',
   UNAVAILABLE: 'UNAVAILABLE',
@@ -17,9 +17,9 @@ export interface CarrierRejection {
   message: string;
 }
 
-/** How a delivery ended, after the client's own retries. Idempotent: "already had it" is DELIVERED. */
+/** How a delivery ended, after the client's own retries. Idempotent: "already had it" is LOADED. */
 export type DeliveryOutcome =
-  | { status: typeof DeliveryStatus.DELIVERED; trackingId: string }
+  | { status: typeof DeliveryStatus.LOADED; trackingId: string }
   | { status: typeof DeliveryStatus.REJECTED; rejections: CarrierRejection[] }
   | { status: typeof DeliveryStatus.UNAUTHORIZED }
   | { status: typeof DeliveryStatus.UNAVAILABLE; detail: JsonObject };

@@ -34,12 +34,12 @@ enum RunStatus {
 enum ShipmentStatus {
   PENDING
   PROCESSING
-  DELIVERED
+  LOADED
   FAILED
 }
 
 enum AttemptOutcome {
-  DELIVERED
+  LOADED
   SKIPPED
   FAILED
 }
@@ -87,7 +87,7 @@ model Run {
   parentRunId String?   @map("parent_run_id") @db.Uuid
   status      RunStatus @default(RUNNING)
   total       Int       @default(0)
-  delivered   Int       @default(0)
+  loaded   Int       @default(0)
   failed      Int       @default(0)
   skipped     Int       @default(0)
   startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz(3)
@@ -126,7 +126,7 @@ model Shipment {
   payload           Json?
   /// Output of DELIVER.
   trackingId        String?        @map("tracking_id")
-  deliveredAt       DateTime?      @map("delivered_at") @db.Timestamptz(3)
+  loadedAt       DateTime?      @map("loaded_at") @db.Timestamptz(3)
   createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 

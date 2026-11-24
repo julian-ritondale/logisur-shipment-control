@@ -33,8 +33,8 @@ const MESSAGES: Record<Cause, (params: ReasonParams) => string> = {
   MISSING_DELIVERY_NOTE_NUMBER: () => 'The delivery note has no number',
   CONFLICTING_DUPLICATE: ({ value, count }: ReasonParams) =>
     `Delivery note ${value} appears ${count} times in the export with different data; it can't be told which one is right`,
-  DELIVERED_WITH_DIFFERENT_DATA: ({ value }: ReasonParams) =>
-    `Already delivered to the carrier (tracking ${value}), but this export has different data; correct it with the carrier`,
+  LOADED_WITH_DIFFERENT_DATA: ({ value }: ReasonParams) =>
+    `Already loaded into the carrier (tracking ${value}), but this export has different data; correct it with the carrier`,
   // VALIDATE
   MISSING_RECIPIENT_NAME: () => 'Recipient name is missing',
   MISSING_ADDRESS: () => 'Recipient address is missing',

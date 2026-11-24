@@ -113,12 +113,12 @@ describe('ExpresoAndinoClient', () => {
   });
 
   describe('Scenario: delivering, the simple answers', () => {
-    it('Given the API answers 201, when delivered, then it is DELIVERED with the tracking id, in a single call with the API key', async () => {
+    it('Given the API answers 201, when loaded, then it is LOADED with the tracking id, in a single call with the API key', async () => {
       const { fetchFn, calls } = scriptedFetch(
         json(201, { tracking_id: 'AND1A2B3C4D', external_ref: 'R-10000507' }),
       );
       await expect(client(fetchFn).deliver(request)).resolves.toEqual({
-        status: DeliveryStatus.DELIVERED,
+        status: DeliveryStatus.LOADED,
         trackingId: 'AND1A2B3C4D',
       });
       expect(routes(calls)).toEqual(['POST /v1/shipments']);
@@ -129,17 +129,17 @@ describe('ExpresoAndinoClient', () => {
       expect(JSON.parse(calls[0].init.body as string)).toEqual(request);
     });
 
-    it('Given the API answers 409 duplicate, when delivered, then it is DELIVERED with the existing tracking id (idempotent)', async () => {
+    it('Given the API answers 409 duplicate, when loaded, then it is LOADED with the existing tracking id (idempotent)', async () => {
       const { fetchFn } = scriptedFetch(
         json(409, { error: 'duplicate', tracking_id: 'ANDEXISTING' }),
       );
       await expect(client(fetchFn).deliver(request)).resolves.toEqual({
-        status: DeliveryStatus.DELIVERED,
+        status: DeliveryStatus.LOADED,
         trackingId: 'ANDEXISTING',
       });
     });
 
-    it('Given the API answers 422, when delivered, then it is REJECTED naming our field, and not retried', async () => {
+    it('Given the API answers 422, when loaded, then it is REJECTED naming our field, and not retried', async () => {
       const { fetchFn, calls } = scriptedFetch(
         json(422, {
           error: 'validation_error',
@@ -157,7 +157,7 @@ describe('ExpresoAndinoClient', () => {
       [{ error: 'validation_error' }, 'validation_error'],
       ['Unprocessable', 'no details given'],
     ])(
-      'Given a 422 without details (%j), when delivered, then it is REJECTED with a message rather than no reason',
+      'Given a 422 without details (%j), when loaded, then it is REJECTED with a message rather than no reason',
       async (body, message) => {
         const { fetchFn } = scriptedFetch(
           typeof body === 'string'
@@ -171,7 +171,7 @@ describe('ExpresoAndinoClient', () => {
       },
     );
 
-    it('Given the API answers 401, when delivered, then it is UNAUTHORIZED and not retried', async () => {
+    it('Given the API answers 401, when loaded, then it is UNAUTHORIZED and not retried', async () => {
       const { fetchFn, calls } = scriptedFetch(
         json(401, { error: 'unauthorized' }),
       );
@@ -183,7 +183,7 @@ describe('ExpresoAndinoClient', () => {
   });
 
   describe('Scenario: ambiguous failures are looked up before sending again (idempotency)', () => {
-    it('Given a 500 that did create the shipment, when delivered, then the lookup finds it and it is not POSTed again', async () => {
+    it('Given a 500 that did create the shipment, when loaded, then the lookup finds it and it is not POSTed again', async () => {
       const { fetchFn, calls } = scriptedFetch(
         json(500, { error: 'internal' }),
         json(200, {
@@ -191,7 +191,7 @@ describe('ExpresoAndinoClient', () => {
         }),
       );
       await expect(client(fetchFn).deliver(request)).resolves.toEqual({
-        status: DeliveryStatus.DELIVERED,
+        status: DeliveryStatus.LOADED,
         trackingId: 'ANDCREATED',
       });
       expect(routes(calls)).toEqual([
@@ -200,14 +200,14 @@ describe('ExpresoAndinoClient', () => {
       ]);
     });
 
-    it('Given a 500 that did not create it, when delivered, then after an empty lookup it is POSTed again', async () => {
+    it('Given a 500 that did not create it, when loaded, then after an empty lookup it is POSTed again', async () => {
       const { fetchFn, calls } = scriptedFetch(
         json(500, { error: 'internal' }),
         json(200, { items: [] }),
         json(201, { tracking_id: 'ANDNEW' }),
       );
       await expect(client(fetchFn).deliver(request)).resolves.toEqual({
-        status: DeliveryStatus.DELIVERED,
+        status: DeliveryStatus.LOADED,
         trackingId: 'ANDNEW',
       });
       expect(routes(calls)).toEqual([
@@ -217,32 +217,32 @@ describe('ExpresoAndinoClient', () => {
       ]);
     });
 
-    it('Given a 503 and then a 409 on the second POST, when delivered, then it is DELIVERED', async () => {
+    it('Given a 503 and then a 409 on the second POST, when loaded, then it is LOADED', async () => {
       const { fetchFn } = scriptedFetch(
         json(503, { error: 'unavailable' }),
         json(200, { items: [] }),
         json(409, { error: 'duplicate', tracking_id: 'ANDDUP' }),
       );
       await expect(client(fetchFn).deliver(request)).resolves.toEqual({
-        status: DeliveryStatus.DELIVERED,
+        status: DeliveryStatus.LOADED,
         trackingId: 'ANDDUP',
       });
     });
 
-    it('Given a network error, when delivered, then it is treated like a 500: looked up and retried', async () => {
+    it('Given a network error, when loaded, then it is treated like a 500: looked up and retried', async () => {
       const { fetchFn, calls } = scriptedFetch(
         new TypeError('fetch failed'),
         json(200, { items: [] }),
         json(201, { tracking_id: 'ANDAFTERNET' }),
       );
       await expect(client(fetchFn).deliver(request)).resolves.toEqual({
-        status: DeliveryStatus.DELIVERED,
+        status: DeliveryStatus.LOADED,
         trackingId: 'ANDAFTERNET',
       });
       expect(calls).toHaveLength(3);
     });
 
-    it('Given a lookup that lists another reference, when delivered, then it is not taken as ours', async () => {
+    it('Given a lookup that lists another reference, when loaded, then it is not taken as ours', async () => {
       const { fetchFn } = scriptedFetch(
         json(500, {}),
         json(200, {
@@ -251,7 +251,7 @@ describe('ExpresoAndinoClient', () => {
         json(201, { tracking_id: 'ANDMINE' }),
       );
       await expect(client(fetchFn).deliver(request)).resolves.toEqual({
-        status: DeliveryStatus.DELIVERED,
+        status: DeliveryStatus.LOADED,
         trackingId: 'ANDMINE',
       });
     });
@@ -268,7 +268,7 @@ describe('ExpresoAndinoClient', () => {
       );
     });
 
-    it('Given the carrier keeps failing, when delivered, then it gives up after 4 attempts as UNAVAILABLE with the last error', async () => {
+    it('Given the carrier keeps failing, when loaded, then it gives up after 4 attempts as UNAVAILABLE with the last error', async () => {
       const { fetchFn, calls } = scriptedFetch(
         json(503, {}), // attempt 1: POST
         json(200, { items: [] }), // attempt 2: lookup, then

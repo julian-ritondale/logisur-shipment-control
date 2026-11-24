@@ -27,7 +27,7 @@ export const toRunSummaryDto = (run: Run): RunSummaryResponseDto => ({
   status: run.status,
   totals: {
     total: run.total,
-    delivered: run.delivered,
+    loaded: run.loaded,
     failed: run.failed,
     skipped: run.skipped,
   },

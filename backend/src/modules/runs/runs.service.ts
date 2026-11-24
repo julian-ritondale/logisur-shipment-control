@@ -14,7 +14,7 @@ import {
   type CarrierClient,
 } from '../carriers/carrier-client.js';
 import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service.js';
-import type { Delivered } from './pipeline/deliverer/deliverer.js';
+import type { Loaded } from './pipeline/deliverer/deliverer.js';
 import {
   deliveryNotesPipeline,
   type DeliveryNotesPipeline,
@@ -24,7 +24,7 @@ import type {
   Candidate,
   Decided,
   Decision,
-  DeliveredShipment,
+  LoadedShipment,
 } from './pipeline/filter/filters.js';
 import { failure, reason } from './pipeline/reasons.js';
 import { runStages } from './pipeline/stage.js';
@@ -62,7 +62,7 @@ type DecisionOf<O> = Extract<Decision, { outcome: O }>;
 const DECISION_RESULTS: {
   [O in Decision['outcome']]: (decision: DecisionOf<O>) => AttemptResult;
 } = {
-  DELIVERED: ({ trackingId }) => ({ outcome: Outcome.DELIVERED, trackingId }),
+  LOADED: ({ trackingId }) => ({ outcome: Outcome.LOADED, trackingId }),
   SKIPPED: ({ reason }) => ({ outcome: Outcome.SKIPPED, reason }),
   FAILED: ({ reason }) => ({
     outcome: Outcome.FAILED,
@@ -100,7 +100,7 @@ export class RunsService {
     await this.execute(runId, async () => {
       const numbers = deliveryNotes.flatMap((note) => note.number ?? []);
       const pipeline = this.pipeline(
-        await this.shipments.deliveredByNumber(this.carrier, numbers),
+        await this.shipments.loadedByNumber(this.carrier, numbers),
       );
       const { kept, decided } = pipeline.select(deliveryNotes);
       for (const entry of decided) {
@@ -153,12 +153,12 @@ export class RunsService {
   }
 
   private pipeline(
-    delivered?: ReadonlyMap<string, DeliveredShipment>,
+    loaded?: ReadonlyMap<string, LoadedShipment>,
   ): DeliveryNotesPipeline {
     return deliveryNotesPipeline({
       carrier: this.carrier,
       client: this.client,
-      delivered,
+      loaded,
     });
   }
 
@@ -230,9 +230,7 @@ export class RunsService {
       runId,
       deliveryNoteId: candidate.deliveryNoteId,
       shipmentId:
-        decision.outcome === Outcome.DELIVERED
-          ? decision.shipmentId
-          : undefined,
+        decision.outcome === Outcome.LOADED ? decision.shipmentId : undefined,
       fromStep: Step.NORMALIZE,
       reachedStep: Step.FILTER,
       result: DECISION_RESULTS[decision.outcome](decision as never),
@@ -281,7 +279,7 @@ export class RunsService {
     work: Work,
   ): Promise<void> {
     try {
-      const result = await runStages<Delivered>(
+      const result = await runStages<Loaded>(
         pipeline.stages,
         work.from,
         work.input,
@@ -289,7 +287,7 @@ export class RunsService {
       );
       if (result.ok) {
         await this.recordAttempt(work, Step.DELIVER, {
-          outcome: Outcome.DELIVERED,
+          outcome: Outcome.LOADED,
           trackingId: result.value.trackingId,
         });
       } else {
@@ -317,9 +315,9 @@ export class RunsService {
     output: unknown,
   ): Promise<void> {
     if (step === Step.DELIVER) {
-      await this.shipments.markDelivered(
+      await this.shipments.markLoaded(
         shipmentId,
-        (output as Delivered).trackingId,
+        (output as Loaded).trackingId,
       );
       return;
     }

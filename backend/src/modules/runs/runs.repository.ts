@@ -18,7 +18,7 @@ import {
 } from '../../common/types/pipeline.types.js';
 
 export type AttemptResult =
-  | { outcome: typeof Outcome.DELIVERED; trackingId: string }
+  | { outcome: typeof Outcome.LOADED; trackingId: string }
   | { outcome: typeof Outcome.SKIPPED; reason: Reason }
   | { outcome: typeof Outcome.FAILED; failure: Failure };
 
@@ -58,7 +58,7 @@ const json = (value: object) => value as Prisma.InputJsonObject;
 
 const attemptColumns = (result: AttemptResult) => {
   switch (result.outcome) {
-    case Outcome.DELIVERED:
+    case Outcome.LOADED:
       return { trackingId: result.trackingId };
     case Outcome.SKIPPED:
       return {
@@ -140,7 +140,7 @@ export class RunsRepository {
     await this.prisma.run.update({
       where: { id: runId },
       data: {
-        delivered: count(AttemptOutcome.DELIVERED),
+        loaded: count(AttemptOutcome.LOADED),
         failed,
         skipped: count(AttemptOutcome.SKIPPED),
         status:

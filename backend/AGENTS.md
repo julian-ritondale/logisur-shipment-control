@@ -121,7 +121,8 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
   - Parse untrusted data with Zod, not by hand: field parsers and whitelists (`lookup(table)`) in `schemas/`, rules in `validator/`, and the carrier's API responses.
   - Prefer a table or a schema to `if` chains: the carrier registry, province and service aliases, filter decisions, delivery outcomes, HTTP answers and API field names are all tables.
   - Name every limit and status (`MIN_PACKAGES`, `Step.VALIDATE`, `HttpStatus.CREATED`); don't use bare literals.
-- **Idempotent means the same outcome.** If the carrier already has a shipment, it's `DELIVERED`, exactly like a new one; don't add an "already exists" case.
+- **`LOADED` means loaded into the carrier's API** (shipment status, attempt outcome, run totals, `loadedAt`). Don't call it "delivered": `DELIVERED` is the carrier's own tracking status, meaning the customer received it.
+- **Idempotent means the same outcome.** If the carrier already has a shipment, it's `LOADED`, exactly like a new one; don't add an "already exists" case.
 - **Carriers:** there is one carrier per deployment, set by `CARRIER` (only `EXPRESO_ANDINO`), and no routing (ADR 0012). `ExpresoAndinoModule` provides its client as `CARRIER_CLIENT`; `RunsService` injects it, and the pipeline sees it through `CarrierAccess` (`pipeline/carrier-access.ts`), which caches its provinces and remembers a credentials refusal for the run. Integrations live in `src/integrations/<carrier>/` (ADR 0009) as four files and nothing else:
   - `<carrier>.client.ts`: `extends ApiClient` (`common/http/`) `implements CarrierClient`. The `CarrierClient` methods (with the retry policy) come first, then one method per endpoint of the carrier's API, named and shaped like the API and returning the raw `ApiResponse`.
   - `<carrier>.mapper.ts`: plain functions and the Zod schemas of the API's bodies: our types to request bodies, `ApiResponse`s to outcomes.
@@ -130,7 +131,7 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
   Delivering to several carriers would need routing again; see the roadmap in `SOLUCION.md`.
 - **Idempotency** is by `external_ref` (= `nro_remito`). Keep the rules in `SOLUCION.md` ("Idempotencia y reintentos") intact:
   - claim a shipment before working on it;
-  - treat 409 as delivered;
+  - treat 409 as loaded;
   - look a reference up before re-POSTing after an ambiguous failure;
   - don't send without a stored payload.
 - **Stored values are English enums** that match `prisma/schema.prisma`.

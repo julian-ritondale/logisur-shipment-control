@@ -19,7 +19,7 @@ export class ShipmentResponseDto {
   cause?: Cause;
   reason?: string;
   trackingId?: string;
-  deliveredAt?: Date;
+  loadedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

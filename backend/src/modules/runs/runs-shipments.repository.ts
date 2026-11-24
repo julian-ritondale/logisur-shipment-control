@@ -8,7 +8,7 @@ import {
 import type { JsonObject } from '../../common/types/json.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { Carrier } from '../carriers/carrier-registry.js';
-import type { DeliveredShipment } from './pipeline/filter/filters.js';
+import type { LoadedShipment } from './pipeline/filter/filters.js';
 import type { Failure } from './pipeline/types/pipeline.types.js';
 import type { NormalizedDeliveryNote } from '../delivery-notes/types/delivery-note.types.js';
 
@@ -65,14 +65,14 @@ const toRetryable = (
 export class RunsShipmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async deliveredByNumber(
+  async loadedByNumber(
     carrier: Carrier,
     numbers: string[],
-  ): Promise<Map<string, DeliveredShipment>> {
+  ): Promise<Map<string, LoadedShipment>> {
     const rows = await this.prisma.shipment.findMany({
       where: {
         carrier,
-        status: ShipmentStatus.DELIVERED,
+        status: ShipmentStatus.LOADED,
         externalRef: { in: numbers },
       },
       select: {
@@ -192,14 +192,14 @@ export class RunsShipmentsRepository {
     });
   }
 
-  async markDelivered(id: string, trackingId: string): Promise<void> {
+  async markLoaded(id: string, trackingId: string): Promise<void> {
     await this.prisma.shipment.update({
       where: { id },
       data: {
-        status: ShipmentStatus.DELIVERED,
+        status: ShipmentStatus.LOADED,
         lastCompletedStep: PipelineStep.DELIVER,
         trackingId,
-        deliveredAt: new Date(),
+        loadedAt: new Date(),
         failedStep: null,
         cause: null,
         reasonMessage: null,
