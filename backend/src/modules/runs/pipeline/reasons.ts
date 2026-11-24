@@ -63,8 +63,6 @@ const MESSAGES: Record<Cause, (params: ReasonParams) => string> = {
   UNKNOWN_SERVICE: ({ value }: ReasonParams) =>
     `Service "${value}" is unknown (expected NORMAL or URGENTE)`,
   // The carrier side
-  NO_CARRIER_INTEGRATION: ({ carrier }: ReasonParams) =>
-    `There is no integration to deliver to ${carrier} yet`,
   REJECTED_BY_CARRIER: ({ value }: ReasonParams) =>
     `The carrier rejected the shipment (${value})`,
   CARRIER_UNAVAILABLE: () =>

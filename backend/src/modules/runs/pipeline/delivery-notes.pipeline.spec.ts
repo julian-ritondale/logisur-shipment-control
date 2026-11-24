@@ -171,24 +171,6 @@ describe('deliveryNotesPipeline', () => {
       expect(carrier.provinces).toHaveBeenCalledTimes(1);
     });
 
-    it('Given no integration for the carrier, when processed, then it fails at VALIDATE as not deliverable yet', async () => {
-      const p = deliveryNotesPipeline({ carrier: Carrier.CRUZ_DEL_NORTE });
-      expect(
-        await runStages(
-          p.stages,
-          Step.VALIDATE,
-          normalize(deliveryNote('R-1')),
-          async () => {},
-        ),
-      ).toMatchObject({
-        ok: false,
-        failure: {
-          step: Step.VALIDATE,
-          cause: Cause.NO_CARRIER_INTEGRATION,
-        },
-      });
-    });
-
     it('Given a stored request, when the stages run from DELIVER, then it is resent without validating or mapping', async () => {
       expect(
         await runStages(

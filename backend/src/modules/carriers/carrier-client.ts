@@ -39,6 +39,9 @@ export class CarrierRequestError extends Error {
   }
 }
 
+/** Injects the `CarrierClient` of the carrier this deployment delivers to (`CARRIER`). */
+export const CARRIER_CLIENT = Symbol('CARRIER_CLIENT');
+
 /** What the pipeline needs from a carrier integration (`src/integrations/<carrier>/`). */
 export interface CarrierClient {
   /** Provinces the carrier serves, spelled as it expects them. Throws `CarrierRequestError`. */

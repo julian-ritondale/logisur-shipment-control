@@ -26,11 +26,6 @@ const CARRIERS: Record<Carrier, { name: string; aliases: readonly string[] }> =
 
 const CARRIER_IDS = Object.keys(CARRIERS) as Carrier[];
 
-/** Carriers a run can deliver to: every one except customer pickup. */
-export const DELIVERABLE_CARRIERS = CARRIER_IDS.filter(
-  (carrier) => carrier !== Carrier.CUSTOMER_PICKUP,
-);
-
 const CARRIER_BY_ALIAS = Object.fromEntries(
   CARRIER_IDS.flatMap((carrier) =>
     CARRIERS[carrier].aliases.map((alias) => [alias, carrier]),

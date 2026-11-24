@@ -52,12 +52,11 @@ export const deliverer = (
 ): Stage<JsonObject, Delivered> => ({
   step: Step.DELIVER,
   run: async (request) => {
-    const blocked =
-      carrier.missing(Step.DELIVER) ?? carrier.refused(Step.DELIVER);
+    const blocked = carrier.refused(Step.DELIVER);
     if (blocked) {
       return fail(blocked);
     }
-    const outcome = await carrier.client!.deliver(request);
+    const outcome = await carrier.client.deliver(request);
     if (outcome.status === DeliveryStatus.UNAUTHORIZED) {
       carrier.refuse(
         failure(Step.DELIVER, reason(Cause.INVALID_CARRIER_CREDENTIALS)),

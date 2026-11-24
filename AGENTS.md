@@ -96,7 +96,7 @@ On this Windows machine use `python`, not `python3`. The npm shipped with Node 2
 Docker Compose gives the backend these environment variables. `@nestjs/config` validates them at startup against a Zod schema (`backend/src/config/env.schema.ts`), and on the host they come from `backend/.env` (see `.env.example`).
 
 - `DATABASE_URL`: `postgresql://logisur:logisur@postgres:5432/logisur`. The container applies the schema (`prisma db push`) before starting; there are no migrations until the schema settles.
-- `CARRIER`: which carrier's remitos this deployment processes. Default `EXPRESO_ANDINO`; it can also be `CRUZ_DEL_NORTE` or `TRANSPORTE_LITORAL`, which have no integration yet (their remitos fail as `NO_CARRIER_INTEGRATION`).
+- `CARRIER`: which carrier's remitos this deployment processes. Only `EXPRESO_ANDINO` (the default) is accepted: it's the only carrier with an integration (ADR 0012).
 - `EXPRESO_API_URL`: `http://expreso-api:8000`
 - `EXPRESO_API_KEY`: defaults to the mock's key `andino-test-7f3a91`
 - `REMITOS_DIR=/data`: the repo's `data/` folder is mounted read-only at `/data`. When running the backend on the host, point `REMITOS_DIR` at `../data`. Nothing reads it yet; exports arrive through uploads.

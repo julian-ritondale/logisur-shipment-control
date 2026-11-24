@@ -1,10 +1,7 @@
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PageRequestDto } from '../../../common/dto/page.request.dto.js';
 import { ShipmentStatus } from '../../../generated/prisma/client.js';
-import {
-  DELIVERABLE_CARRIERS,
-  type Carrier,
-} from '../../carriers/carrier-registry.js';
+import { Carrier } from '../../carriers/carrier-registry.js';
 import {
   Cause,
   STEPS,
@@ -19,7 +16,7 @@ export class ListShipmentsRequestDto extends PageRequestDto {
   status?: ShipmentStatus;
 
   @IsOptional()
-  @IsIn(DELIVERABLE_CARRIERS)
+  @IsIn(Object.values(Carrier))
   carrier?: Carrier;
 
   /** `nro_remito`. */

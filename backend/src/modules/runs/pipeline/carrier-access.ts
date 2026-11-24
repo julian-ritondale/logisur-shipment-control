@@ -3,50 +3,33 @@ import {
   DeliveryStatus,
   type CarrierClient,
 } from '../../carriers/carrier-client.js';
-import { carrierName, type Carrier } from '../../carriers/carrier-registry.js';
 import { failure, reason } from './reasons.js';
 import type { Failure } from './types/pipeline.types.js';
 import { Cause, type Step } from '../../../common/types/pipeline.types.js';
 
 /**
- * The carrier as one run sees it: its client (if there's an integration),
- * its provinces (fetched once per run, failures included), and whether it
+ * The carrier as one run sees it: its client, its provinces (fetched once per run, failures included), and whether it
  * refused our credentials (then the run stops calling it).
  */
 export interface CarrierAccess {
-  readonly client?: CarrierClient;
-  missing(step: Step): Failure | undefined;
+  readonly client: CarrierClient;
   refused(step: Step): Failure | undefined;
   refuse(failure: Failure): void;
   provinces(): Promise<ReadonlySet<string>>;
 }
 
-export function carrierAccess(
-  carrier: Carrier,
-  client?: CarrierClient,
-): CarrierAccess {
+export function carrierAccess(client: CarrierClient): CarrierAccess {
   let provinces: Promise<ReadonlySet<string>> | undefined;
   let refusal: Failure | undefined;
 
   return {
     client,
-    missing: (step) =>
-      client
-        ? undefined
-        : failure(
-            step,
-            reason(Cause.NO_CARRIER_INTEGRATION, {
-              carrier: carrierName(carrier),
-            }),
-          ),
     refused: (step) => refusal && { ...refusal, step },
     refuse: (why) => {
       refusal = why;
     },
     provinces: () => {
-      provinces ??= client
-        ? client.provinces().then((list) => new Set(list))
-        : Promise.reject(new Error('No carrier integration'));
+      provinces ??= client.provinces().then((list) => new Set(list));
       return provinces;
     },
   };

@@ -19,7 +19,7 @@ import { validator } from './validator/validate.js';
 
 export interface DeliveryNotesPipelineConfig {
   carrier: Carrier;
-  client?: CarrierClient;
+  client: CarrierClient;
   /** Shipments already delivered to this carrier, by delivery note number. */
   delivered?: ReadonlyMap<string, DeliveredShipment>;
 }
@@ -43,7 +43,7 @@ export interface DeliveryNotesPipeline {
 export function deliveryNotesPipeline(
   config: DeliveryNotesPipelineConfig,
 ): DeliveryNotesPipeline {
-  const carrier = carrierAccess(config.carrier, config.client);
+  const carrier = carrierAccess(config.client);
   const filter = composeFilters(
     byCarrier(config.carrier),
     hasNumber(),

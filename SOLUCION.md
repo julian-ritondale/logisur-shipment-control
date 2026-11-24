@@ -88,7 +88,7 @@ El backend está organizado por funcionalidad, en `backend/src/modules/`: **un p
 
 Las dependencias van en un solo sentido:
 - `shipments` usa `runs`.
-- `runs` usa `exports`, `delivery-notes` y `carriers`.
+- `runs` usa `exports`, `delivery-notes` y la integración de Expreso Andino (su `CarrierClient`).
 - `exports` usa `delivery-notes` (al subir, guarda sus remitos).
 - `attempts` no depende de otros paquetes.
 
@@ -225,7 +225,6 @@ Estados de una corrida: `RUNNING`, `COMPLETED`, `COMPLETED_WITH_FAILURES` y `FAI
 | `UNKNOWN_PROVINCE`, `INVALID_PACKAGES`, `INVALID_WEIGHT`, `INVALID_DECLARED_VALUE`, `UNKNOWN_SERVICE` | VALIDATE | fallido | Number of packages "dos" is not a whole number | Corregir y volver a subir |
 | `TOO_FEW_PACKAGES`, `NON_POSITIVE_WEIGHT`, `NEGATIVE_DECLARED_VALUE` | VALIDATE | fallido | Must have at least 1 package (has 0) | Corregir y volver a subir |
 | `PROVINCE_NOT_SERVED` | VALIDATE | fallido | The carrier doesn't deliver to … | Si el transportista amplía cobertura |
-| `NO_CARRIER_INTEGRATION` | VALIDATE | fallido | There is no integration to deliver to … yet | Sí, cuando exista la integración |
 | `REJECTED_BY_CARRIER` | DELIVER | fallido | The carrier rejected the shipment (postal code: …) | Corregir los datos |
 | `CARRIER_UNAVAILABLE` | VALIDATE / DELIVER | fallido | The carrier's service is not responding; retry later | **Sí** |
 | `INVALID_CARRIER_CREDENTIALS` | VALIDATE / DELIVER | fallido | The carrier refused our credentials; … | Sí, después de corregir la configuración |
@@ -267,14 +266,13 @@ Verificado contra el mock: después de una corrida, cada remito enviado existe *
 
 Para **corregir datos** (por ejemplo, el código postal que falta) se sube una exportación corregida y se corre: el envío de ese remito se procesa de nuevo con los datos nuevos.
 
-## Transportista configurable
+## El transportista: configuración, no ruteo
 
 - **No hay nada atado a Expreso Andino** fuera de su integración (`backend/src/integrations/expreso-andino/`):
   - el registro de transportistas (`carriers/carrier-registry.ts`) es una tabla con todos los de la exportación y sus formas de escribirse;
   - los filtros reciben el transportista como parámetro.
-- **El transportista de cada despliegue se configura** con `CARRIER` (por defecto `EXPRESO_ANDINO`), validado al arrancar con un esquema Zod.
-- **El pipeline llega al transportista a través del `CarrierRouter`.** Le pide el cliente del transportista (`CarrierClient`: `provinces`, `toShipmentRequest`, `deliver`) y nunca importa una integración directamente.
-- **Con otro transportista configurado,** sus remitos se filtran y validan igual, y fallan como `NO_CARRIER_INTEGRATION`, listos para reintentar cuando exista la integración.
+- **El transportista de cada despliegue se configura** con `CARRIER`. Solo acepta `EXPRESO_ANDINO` (el valor por defecto), el único con integración, y se valida al arrancar con un esquema Zod.
+- **No hay ruteo entre transportistas.** `ExpresoAndinoModule` entrega su cliente como `CARRIER_CLIENT` (el contrato `CarrierClient`: `provinces`, `toShipmentRequest`, `deliver`), y `RunsService` lo recibe inyectado. El pipeline nunca importa la integración directamente.
 
 ## Decisiones de alcance
 
@@ -310,7 +308,7 @@ Para **corregir datos** (por ejemplo, el código postal que falta) se sube una e
   - `carriers`: cada transportista con sus alias y su integración, y si está activo.
   - `clients`: los clientes de LogiSur y sus credenciales por transportista, si cada cliente tiene su propia cuenta.
   - Los envíos ya están identificados por (transportista, remito).
-- **El router enviaría cada envío al cliente de su transportista,** y una corrida podría procesar varios transportistas a la vez. `CARRIER` dejaría de ser configuración y pasaría a ser un dato de la corrida o del remito.
+- **Volvería a hacer falta un router** que envíe cada envío al cliente de su transportista, y una corrida podría procesar varios transportistas a la vez. `CARRIER` dejaría de ser configuración y pasaría a ser un dato de la corrida o del remito.
 - **Validación por transportista:** cada integración aportaría sus reglas (por ejemplo, si exige código postal).
 - **Seguimiento:** consultar el estado de cada envío (`GET /v1/shipments/{tracking_id}`: `CREATED`, `IN_TRANSIT`, `DELIVERED`, `EXCEPTION`) con un job periódico y mostrarlo junto al remito.
 - **Selección de transportista con insights:**

@@ -2,8 +2,7 @@ import {
   CarrierRequestError,
   DeliveryStatus,
 } from '../../../carriers/carrier-client.js';
-import { Carrier } from '../../../carriers/carrier-registry.js';
-import { carrierAccess, fromCarrierError } from '../carrier-access.js';
+import { fromCarrierError } from '../carrier-access.js';
 import { fromDeliveryOutcome } from './deliverer.js';
 import { Cause, Step } from '../../../../common/types/pipeline.types.js';
 
@@ -87,15 +86,5 @@ describe('delivery outcomes', () => {
         });
       },
     );
-
-    it('Given a carrier without an integration, when it is used, then the failure names the carrier', () => {
-      expect(
-        carrierAccess(Carrier.CRUZ_DEL_NORTE).missing(Step.VALIDATE),
-      ).toEqual({
-        step: Step.VALIDATE,
-        cause: Cause.NO_CARRIER_INTEGRATION,
-        message: 'There is no integration to deliver to Cruz del Norte yet',
-      });
-    });
   });
 });

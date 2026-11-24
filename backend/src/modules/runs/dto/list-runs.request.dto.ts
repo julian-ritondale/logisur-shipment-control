@@ -1,10 +1,7 @@
 import { IsIn, IsOptional, IsUUID } from 'class-validator';
 import { PageRequestDto } from '../../../common/dto/page.request.dto.js';
 import { RunKind, RunStatus } from '../../../generated/prisma/client.js';
-import {
-  DELIVERABLE_CARRIERS,
-  type Carrier,
-} from '../../carriers/carrier-registry.js';
+import { Carrier } from '../../carriers/carrier-registry.js';
 
 export class ListRunsRequestDto extends PageRequestDto {
   @IsOptional()
@@ -20,6 +17,6 @@ export class ListRunsRequestDto extends PageRequestDto {
   exportId?: string;
 
   @IsOptional()
-  @IsIn(DELIVERABLE_CARRIERS)
+  @IsIn(Object.values(Carrier))
   carrier?: Carrier;
 }

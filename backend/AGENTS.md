@@ -51,7 +51,7 @@ src/
   generated/prisma/         Prisma client (generated, git-ignored)
   integrations/<carrier>/   one carrier: <carrier>.module.ts, .client.ts, .mapper.ts and .client.spec.ts
   modules/
-    carriers/               carrier registry (a table of names and spellings), CarrierClient contract, CarrierRouter
+    carriers/               carrier registry (a table of names and spellings) and the CarrierClient contract (CARRIER_CLIENT); no module
     exports/                /exports: upload, store and read exports; reader/ and storage/
     delivery-notes/         /delivery-notes: the remito domain model only; types/ and schemas/ (Zod field parsers)
     runs/                   /runs: create (execute the pipeline, and retries), list and read runs; pipeline/ (the steps); saves each shipment's progress
@@ -62,7 +62,7 @@ src/
 - **One package per REST resource** (ADR 0008). Every operation on a resource (`POST`, `GET`, `PUT`, `DELETE`, and sub-resources such as `/runs/:id/retries`) lives in that resource's package, never split across packages by reading vs. writing.
 - **Each package under `modules/` owns its controller, service, repository, mapper, DTOs and errors, all named after the package** (`runs.controller.ts`, `RunsService`, `runs.mapper.ts`, `runs.errors.ts`, ...): one controller per package. A second repository is allowed when the package writes another resource's table, and is still prefixed (`runs-shipments.repository.ts`). It imports only the files it uses.
 - **A package that touches the database does it through its own repository.** Services hold the rules and never call Prisma directly.
-- **Dependencies point one way:** `shipments → runs → exports → delivery-notes`, and `runs → delivery-notes, carriers`. `runs` writes shipment progress and attempts through its own repositories (`RunsShipmentsRepository`, `RunsRepository`), so it never needs the `shipments` or `attempts` modules.
+- **Dependencies point one way:** `shipments → runs → exports → delivery-notes`, and `runs → delivery-notes`; `runs` gets its carrier client from `ExpresoAndinoModule`. `runs` writes shipment progress and attempts through its own repositories (`RunsShipmentsRepository`, `RunsRepository`), so it never needs the `shipments` or `attempts` modules.
 
 ## REST API
 
@@ -85,7 +85,7 @@ src/
 - **Swappable parts are interfaces injected by token.** A dependency that could have several implementations is a small TypeScript `interface` plus a `Symbol` token, both in the same file:
   - where exports are stored (`EXPORTS_STORAGE`);
   - how they are read (`EXPORTS_READER`);
-  - how a carrier is reached (`CARRIER_ROUTER`).
+  - how the carrier is reached (`CARRIER_CLIENT`).
 
   The service injects it with `@Inject(TOKEN)` and imports the interface with `import type`, never an implementation class. Keep these interfaces to the few methods the service needs.
 - **One module per implementation, picked through imports.** Each implementation has its own module that provides and exports the token, for example `PrismaExportsStorageModule` and `JsonExportsReaderModule`. The feature module selects them in `imports`, so switching implementations is a one-line change. In tests, provide the token with a fake (`{ provide: TOKEN, useValue: ... }`) or use `.overrideProvider(TOKEN)`.
@@ -121,12 +121,12 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
   - Prefer a table or a schema to `if` chains: the carrier registry, province and service aliases, filter decisions, delivery outcomes, HTTP answers and API field names are all tables.
   - Name every limit and status (`MIN_PACKAGES`, `Step.VALIDATE`, `HttpStatus.CREATED`); don't use bare literals.
 - **Idempotent means the same outcome.** If the carrier already has a shipment, it's `DELIVERED`, exactly like a new one; don't add an "already exists" case.
-- **Carriers:** the pipeline only sees a carrier through `CarrierAccess` (`pipeline/carrier-access.ts`), built from the client the `CarrierRouter` returns. Integrations live in `src/integrations/<carrier>/` (ADR 0009) as four files and nothing else:
+- **Carriers:** there is one carrier per deployment, set by `CARRIER` (only `EXPRESO_ANDINO`), and no routing (ADR 0012). `ExpresoAndinoModule` provides its client as `CARRIER_CLIENT`; `RunsService` injects it, and the pipeline sees it through `CarrierAccess` (`pipeline/carrier-access.ts`), which caches its provinces and remembers a credentials refusal for the run. Integrations live in `src/integrations/<carrier>/` (ADR 0009) as four files and nothing else:
   - `<carrier>.client.ts`: `extends ApiClient` (`common/http/`) `implements CarrierClient`. The `CarrierClient` methods (with the retry policy) come first, then one method per endpoint of the carrier's API, named and shaped like the API and returning the raw `ApiResponse`.
   - `<carrier>.mapper.ts`: plain functions and the Zod schemas of the API's bodies: our types to request bodies, `ApiResponse`s to outcomes.
   - `<carrier>.module.ts` and `<carrier>.client.spec.ts`.
 
-  To add a carrier, write those and register its client in `CarriersModule`.
+  Delivering to several carriers would need routing again; see the roadmap in `SOLUCION.md`.
 - **Idempotency** is by `external_ref` (= `nro_remito`). Keep the rules in `SOLUCION.md` ("Idempotencia y reintentos") intact:
   - claim a shipment before working on it;
   - treat 409 as delivered;
@@ -146,4 +146,4 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
 - **Tests:**
   - Unit tests need no database: the pipeline helpers are pure, and services get fakes for their tokens.
   - E2E tests need PostgreSQL (`docker compose up -d postgres`). `test/global-setup.ts` recreates `logisur_test` from the schema (`prisma db push --force-reset`), and `test/database.ts` truncates it between tests.
-  - Replace the carrier with `.overrideProvider(CARRIER_ROUTER)`; never call the real mock from tests.
+  - Replace the carrier with `.overrideProvider(CARRIER_CLIENT)`; never call the real mock from tests.

@@ -6,15 +6,11 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import type { JsonObject } from './../src/common/types/json.js';
 import {
+  CARRIER_CLIENT,
   DeliveryStatus,
   type CarrierClient,
   type DeliveryOutcome,
 } from './../src/modules/carriers/carrier-client.js';
-import type { Carrier } from './../src/modules/carriers/carrier-registry.js';
-import {
-  CARRIER_ROUTER,
-  type CarrierRouter,
-} from './../src/modules/carriers/carrier-router.js';
 import { PROVINCES } from './../src/modules/delivery-notes/schemas/delivery-note.schemas.js';
 import type { ValidDeliveryNote } from './../src/modules/delivery-notes/types/delivery-note.types.js';
 import { resetDatabase } from './database.js';
@@ -87,7 +83,6 @@ const EXPORT = [
 describe('Runs, reports and shipments (e2e)', () => {
   let app: INestApplication<App>;
   let carrier: FakeCarrier;
-  let clients: Partial<Record<Carrier, CarrierClient>>;
 
   const http = () => request(app.getHttpServer());
   const uploadExport = async (
@@ -113,12 +108,17 @@ describe('Runs, reports and shipments (e2e)', () => {
       .body.items[0];
 
   beforeAll(async () => {
-    const router: CarrierRouter = { clientFor: (c: Carrier) => clients[c] };
     const moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(CARRIER_ROUTER)
-      .useValue(router)
+      // Each test gets a fresh FakeCarrier; this forwards to the current one.
+      .overrideProvider(CARRIER_CLIENT)
+      .useValue({
+        provinces: () => carrier.provinces(),
+        toShipmentRequest: (note: ValidDeliveryNote) =>
+          carrier.toShipmentRequest(note),
+        deliver: (request: JsonObject) => carrier.deliver(request),
+      } satisfies CarrierClient)
       .compile();
     app = moduleFixture.createNestApplication();
     await app.init();
@@ -127,7 +127,6 @@ describe('Runs, reports and shipments (e2e)', () => {
   beforeEach(async () => {
     await resetDatabase(app);
     carrier = new FakeCarrier();
-    clients = { EXPRESO_ANDINO: carrier };
   });
 
   afterAll(async () => {
@@ -439,17 +438,6 @@ describe('Runs, reports and shipments (e2e)', () => {
         expect.objectContaining({
           reachedStep: 'DELIVER',
           reason: 'The carrier rejected the shipment (postal code: invalid)',
-        }),
-      ]);
-    });
-
-    it('Given no integration for the carrier, when run, then its delivery notes fail as not deliverable yet', async () => {
-      clients = {};
-      const { id } = await run([deliveryNote('R-1', 'EXPRESO ANDINO')]);
-      expect(await attempts(`runId=${id}`)).toEqual([
-        expect.objectContaining({
-          cause: 'NO_CARRIER_INTEGRATION',
-          retryable: true,
         }),
       ]);
     });

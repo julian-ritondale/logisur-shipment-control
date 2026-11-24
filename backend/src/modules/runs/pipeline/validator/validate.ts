@@ -129,8 +129,7 @@ export const validator = (
 ): Stage<NormalizedDeliveryNote, ValidDeliveryNote> => ({
   step: Step.VALIDATE,
   run: async (note) => {
-    const blocked =
-      carrier.missing(Step.VALIDATE) ?? carrier.refused(Step.VALIDATE);
+    const blocked = carrier.refused(Step.VALIDATE);
     if (blocked) {
       return fail(blocked);
     }

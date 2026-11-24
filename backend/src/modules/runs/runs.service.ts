@@ -9,9 +9,9 @@ import { valueOf } from '../../common/types/field.js';
 import { RunKind } from '../../generated/prisma/client.js';
 import type { Carrier } from '../carriers/carrier-registry.js';
 import {
-  CARRIER_ROUTER,
-  type CarrierRouter,
-} from '../carriers/carrier-router.js';
+  CARRIER_CLIENT,
+  type CarrierClient,
+} from '../carriers/carrier-client.js';
 import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service.js';
 import type { Delivered } from './pipeline/deliverer/deliverer.js';
 import {
@@ -80,7 +80,7 @@ export class RunsService {
     private readonly deliveryNotes: DeliveryNotesService,
     private readonly runs: RunsRepository,
     private readonly shipments: RunsShipmentsRepository,
-    @Inject(CARRIER_ROUTER) private readonly router: CarrierRouter,
+    @Inject(CARRIER_CLIENT) private readonly client: CarrierClient,
     config: ConfigService,
   ) {
     this.carrier = config.getOrThrow<Carrier>('CARRIER');
@@ -156,7 +156,7 @@ export class RunsService {
   ): DeliveryNotesPipeline {
     return deliveryNotesPipeline({
       carrier: this.carrier,
-      client: this.router.clientFor(this.carrier),
+      client: this.client,
       delivered,
     });
   }

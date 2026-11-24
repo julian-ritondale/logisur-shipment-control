@@ -2,7 +2,6 @@ import { invalid, MISSING, valid } from '../../common/types/field.js';
 import {
   Carrier,
   carrierName,
-  DELIVERABLE_CARRIERS,
   isCarrier,
   resolveCarrier,
 } from './carrier-registry.js';
@@ -85,11 +84,6 @@ describe('carrier registry', () => {
   describe('Scenario: names and ids', () => {
     it('Given a carrier, when its name is asked, then it is the business name', () => {
       expect(carrierName(Carrier.CRUZ_DEL_NORTE)).toBe('Cruz del Norte');
-    });
-
-    it('Given the carriers, when the deliverable ones are listed, then customer pickup is not among them', () => {
-      expect(DELIVERABLE_CARRIERS).not.toContain(Carrier.CUSTOMER_PICKUP);
-      expect(DELIVERABLE_CARRIERS).toContain(Carrier.EXPRESO_ANDINO);
     });
 
     it.each([
