@@ -146,4 +146,5 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
 - **Tests:**
   - Unit tests need no database: the pipeline helpers are pure, and services get fakes for their tokens.
   - E2E tests need PostgreSQL (`docker compose up -d postgres`). `test/global-setup.ts` recreates `logisur_test` from the schema (`prisma db push --force-reset`), and `test/database.ts` truncates it between tests.
+  - **Agents must ask before every e2e run.** Prisma refuses destructive commands (`db push --force-reset`, `migrate reset`, ...) started by an AI agent unless `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` holds the user's exact consent message. A consent covers one run: ask again each time, naming the database (`logisur_test`) and saying that its data is deleted. The same applies to `docker compose up --build`, whose backend container runs `prisma db push --accept-data-loss` against the dev database.
   - Replace the carrier with `.overrideProvider(CARRIER_CLIENT)`; never call the real mock from tests.

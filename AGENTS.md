@@ -36,6 +36,18 @@ Before writing infrastructure code, check what the framework (NestJS, React, Vit
 
 Example of the mistake: a catch-all `@Catch()` exception filter that rebuilt HTTP status names, the `HttpException` body format and 500-and-log handling. Nest's `BaseExceptionFilter` already does all of that. The fix was `ApplicationErrorFilter`, which catches only our own `ApplicationError`s, converts them to Nest exceptions and calls `super.catch()`.
 
+## Keep it simple
+
+Build what the brief needs today, the smallest way that reads clearly. Abstractions for a future that may not come cost files and indirection now, and they have to be explained and defended in review.
+
+- **No layers for hypothetical cases.** Add routing, plugin points or adapter layers only when a second real case exists. Examples that were built and then removed:
+  - a `CarrierRouter` for carriers with no integration (ADR 0012);
+  - a separate carrier adapter and schemas file next to the API client (ADR 0009);
+  - a `reports` module that split reads from writes of the same resource (ADR 0008).
+- **Before adding a file, a token or a module, say what it does today.** If the answer is "it will let us...", don't add it; note it in the roadmap in `SOLUCION.md` instead.
+- **Fewer, well-named files beat many small ones.** One package per REST resource with files named after it. Each carrier integration is four files.
+- **Record what you remove.** When a refactor drops or moves something, update `AGENTS.md`, `backend/AGENTS.md` and `SOLUCION.md` in the same change, and write an ADR if it reverses one, so the next change doesn't bring it back.
+
 ## Commit messages
 
 Every commit follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). The spec is the authority; the rules that matter day to day are:
