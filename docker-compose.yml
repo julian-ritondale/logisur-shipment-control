@@ -1,0 +1,41 @@
+services:
+  # Mock of the Expreso Andino shipments API (see expreso-api/API.md).
+  # The folder is mounted read-only and the script is imported unchanged; the
+  # inline command only rebinds the server to 0.0.0.0 so other containers can
+  # reach it (the script itself listens on 127.0.0.1).
+  # State is in memory: `docker compose restart expreso-api` resets it.
+  expreso-api:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./expreso-api:/app:ro
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    command:
+      - python
+      - -c
+      - "import expreso_api as e; print('expreso-api on :8000', flush=True); e.ThreadingHTTPServer(('0.0.0.0', 8000), e.H).serve_forever()"
+    ports:
+      - "8000:8000"
+
+  backend:
+    build: ./backend
+    environment:
+      PORT: "3000"
+      EXPRESO_API_URL: http://expreso-api:8000
+      EXPRESO_API_KEY: ${EXPRESO_API_KEY:-andino-test-7f3a91}
+      REMITOS_DIR: /data
+    volumes:
+      - ./data:/data:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - expreso-api
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
