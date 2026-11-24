@@ -1,15 +1,69 @@
-# Solución: de los remitos de LogiSur a la API del transportista
+# Solución: control de envíos de LogiSur
 
-Este documento explica cómo el backend toma la exportación diaria de remitos de LogiSur y la carga en la API de envíos del transportista (hoy, Expreso Andino). Cubre:
-- qué hace cada paso;
-- qué se guarda y cuándo;
-- cómo se informa cada error en términos de negocio;
-- cómo se reintenta sin duplicar envíos;
-- qué cambiaría en un producto real.
+Este documento tiene dos partes:
+- **[La solución para LogiSur](#la-solución-para-logisur):** qué problema elegimos, para quién, qué construimos, qué dejamos afuera y cómo seguiría.
+- **[El puente](#el-puente-de-los-remitos-a-la-api-del-transportista):** cómo el backend toma la exportación diaria de remitos y la carga en la API de envíos del transportista (hoy, Expreso Andino). Explica qué hace cada paso, qué se guarda y cuándo, cómo se informa cada error y cómo se reintenta sin duplicar envíos.
 
-Los valores que se guardan (estados, pasos, códigos de motivo) y los mensajes que ve el usuario están en **inglés**. Este documento los explica, pero no los traduce.
+Los valores que guarda el backend (estados, pasos, códigos de motivo) y sus mensajes están en **inglés**. La interfaz está en **español**: traduce esos códigos en un solo catálogo (`frontend/src/lib/labels.ts`).
 
-Decisión técnica de referencia: [ADR 0005](docs/adr/0005-functional-pipeline-persistence-and-idempotent-delivery.md).
+Decisiones técnicas de referencia: [ADR 0005](docs/adr/0005-functional-pipeline-persistence-and-idempotent-delivery.md) (el puente) y [ADR 0006](docs/adr/0006-frontend-routing-data-fetching-and-ui-language.md) (la interfaz).
+
+## La solución para LogiSur
+
+### El problema y para quién
+
+El puente resuelve el tipeo. Queda el otro problema que plantea LogiSur, el **control**: hoy operaciones se entera de que un envío no se cargó, de que le faltaba un dato o de que está atrasado **cuando llama el cliente**.
+
+Lo resolvemos para dos personas del equipo de LogiSur:
+- **Quien despacha**, cada mañana. Necesita saber qué no salió, por qué, y qué hacer para que salga.
+- **Quien atiende al cliente.** Necesita contestar "¿qué pasó con el remito R-…?" en segundos, sin abrir el portal del expreso ni el sistema de LogiSur.
+
+La idea de fondo: **cualquier remito que emitió LogiSur tiene una historia que se puede explicar en cualquier momento.** Si se cargó o por qué no, con qué datos, con qué tracking, cuándo llega, si es urgente y si está atrasado.
+
+### Qué construimos
+
+Una aplicación web en español (`frontend/`) sobre la API del backend, sin lógica de negocio propia:
+
+| Pantalla | Para qué | API que usa |
+| --- | --- | --- |
+| **Control** (`/`) | Lo que hay que mirar hoy. Muestra contadores de cargados, entregados, no cargados, atrasados y con incidencia, y una lista *Requiere atención* ordenada por urgencia. El botón *Actualizar estado* le pregunta al transportista dónde está cada envío. | `GET /shipments`, `POST /shipments/status-checks`, `GET /runs` |
+| **Envíos** (`/shipments`) | Todos los envíos, con vistas por situación: no cargados, atrasados, con incidencia, cargados y entregados. La vista va en la URL, así que cada contador del Control lleva a su lista. | `GET /shipments` |
+| **Envío** (`/shipments/:id`) | La ficha de un remito: destinatario, carga, servicio (normal o urgente), tracking, estado en el transportista, entrega estimada, historial de corridas y lo que se le envió al transportista. Si falló, muestra el motivo y un botón *Reintentar*. | `GET /shipments/:id`, `GET /attempts?shipmentId=`, `POST /shipments/:id/retries` |
+| **Búsqueda** (buscador del encabezado, en todas las pantallas; tecla `/`) | Todo lo que se sabe de un número de remito, **aunque nunca haya llegado a ser un envío**: otro transportista, retira el cliente, duplicado. El resultado muestra un resumen del estado, el historial de procesamiento y las exportaciones de origen. | `GET /delivery-notes`, `GET /shipments` y `GET /attempts` por número |
+| **Exportaciones y Corridas** | Subir el JSON del día y correrlo. Ver el informe de cada corrida (totales, resumen por motivo, remito por remito) y reintentar los fallidos. | `/exports`, `/runs`, `/attempts` |
+
+Decisiones de la interfaz:
+- **Dos estados distintos, con nombres distintos.** El *Estado* es el nuestro: ¿llegó al transportista? (*Cargado* o *No cargado*). *En el transportista* es el suyo: recibido, en viaje, entregado o con incidencia. Que esté cargado no quiere decir que se haya entregado.
+- **Motivos en términos de negocio.** Se muestra el motivo traducido (*Falta el código postal*), no el error técnico. El mensaje original del backend queda como tooltip.
+- **Siempre se ve de qué transportista se trata.** El encabezado tiene un selector de transportista (hoy solo Expreso Andino) y el título de cada pantalla empieza con él: *Expreso Andino / Envíos*.
+- **Listas paginadas** con páginas numeradas, Anterior y Siguiente, y un botón *Atrás* en cada ficha.
+- **Los contadores del Control se calculan en el navegador,** recorriendo `GET /shipments` hasta 2.000 envíos, porque el backend no tiene un endpoint de totales. El volumen de un día entra con margen, y si se supera la pantalla avisa que los números son parciales.
+
+### Qué dejamos afuera y por qué
+
+- **Varios transportistas.** El código sirve a un solo transportista, Expreso Andino, que es el único con API ([ADR 0012](docs/adr/0012-one-carrier-per-deployment-without-routing.md)). El selector de transportista del encabezado tiene una sola opción, y no hay filtros ni páginas por transportista porque no tendrían nada que mostrar. Los remitos de otros transportistas aparecen como *Omitidos: asignado a otro transportista* en cada corrida, así que se ve cuántos se siguen cargando a mano. Es el primer paso de la [hoja de ruta](#hoja-de-ruta-para-un-producto-real).
+- **Corregir datos desde la interfaz.** Hoy se corrige el remito en el sistema de LogiSur, se vuelve a subir la exportación y se vuelve a correr. Editar en la interfaz necesita auditoría y una decisión sobre qué sistema es dueño del dato.
+- **Seguimiento automático y alertas.** El estado se consulta con un botón, porque es un request sincrónico igual que las corridas ([ADR 0015](docs/adr/0015-track-loaded-shipments-on-demand.md)). Un job periódico con avisos por mail o chat es lo siguiente.
+- **Usuarios y permisos.** Es una herramienta interna de demo.
+
+### Cómo seguiría si fuera un producto
+
+La visión es una **torre de control de envíos** de LogiSur sobre **todos** sus transportistas:
+
+1. **Varios transportistas.** Una integración por transportista (su cliente y su mapeo), y el transportista pasa a ser un dato del remito en vez de configuración. La interfaz suma un filtro y una columna de transportista en Envíos y Corridas, y una página por transportista.
+2. **Insights para elegir transportista.** Con los envíos de todos en un mismo modelo se puede medir, por transportista, provincia y servicio:
+   - el cumplimiento de la fecha estimada;
+   - las incidencias y los rechazos;
+   - la cobertura;
+   - el costo por envío.
+
+   Con eso LogiSur decide con datos a qué transportista le conviene darle cada destino, y a cuáles dejar.
+3. **Proactivo en vez de reactivo.** Seguimiento periódico y alertas a operaciones cuando algo se atrasa o tiene una incidencia, antes de que llame el cliente.
+4. **Cerrar el circuito:** corregir y reintentar desde la interfaz, con auditoría.
+
+El detalle técnico está en la [hoja de ruta](#hoja-de-ruta-para-un-producto-real).
+
+# El puente: de los remitos a la API del transportista
 
 ## Resumen
 
@@ -86,7 +140,7 @@ El backend está organizado por funcionalidad, en `backend/src/modules/`: **un p
 | `runs` | `/runs`: crea corridas (ejecuta el pipeline sobre una exportación, y los reintentos), las lista y las lee con su desglose. Contiene el pipeline (`pipeline/`) y guarda el avance de cada envío. |
 | `attempts` | `/attempts`: qué le pasó a cada remito en cada corrida (solo lectura; los registra `runs`). |
 | `shipments` | Consulta de envíos, y su reintento (que delega en `runs`). |
-| `carriers` | Registro de transportistas, contrato del cliente y router. |
+| `carriers` | Registro de transportistas y contrato del cliente (`CarrierClient`). |
 
 Las dependencias van en un solo sentido:
 - `shipments` usa `runs`.
@@ -325,6 +379,7 @@ Para **corregir datos** (por ejemplo, el código postal que falta) se sube una e
   - `clients`: los clientes de LogiSur y sus credenciales por transportista, si cada cliente tiene su propia cuenta.
   - Los envíos ya están identificados por (transportista, remito).
 - **Volvería a hacer falta un router** que envíe cada envío al cliente de su transportista, y una corrida podría procesar varios transportistas a la vez. `CARRIER` dejaría de ser configuración y pasaría a ser un dato de la corrida o del remito.
+- **Interfaz:** filtro y columna de transportista en Envíos y Corridas, y una página por transportista con sus métricas (las de "Insights", abajo). Hoy la interfaz no los tiene porque hay uno solo.
 - **Validación por transportista:** cada integración aportaría sus reglas (por ejemplo, si exige código postal).
 - **Seguimiento automático:** hoy el estado se consulta a pedido (`POST /shipments/status-checks`). En producción, un job periódico (`@nestjs/schedule` con `@nestjs/locks`) lo haría solo, y avisaría de los atrasados y las excepciones nuevas.
 - **Selección de transportista con insights:**
