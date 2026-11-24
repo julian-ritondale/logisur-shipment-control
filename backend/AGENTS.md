@@ -46,9 +46,10 @@ src/
   config/                   environment schema (Zod)
   common/                   cross-cutting pieces: application errors and their filter, shared DTOs (id, paging),
                             types (Field, JSON) and Zod helpers (fieldParser, lookup)
+    http/                   ApiClient: the generic base for clients of third-party JSON APIs
   prisma/                   PrismaModule / PrismaService (the single database client)
   generated/prisma/         Prisma client (generated, git-ignored)
-  integrations/<carrier>/   one carrier's API client (implements CarrierClient) and its module
+  integrations/<carrier>/   one carrier: its API client, its CarrierClient adapter and its module
   modules/
     carriers/               carrier registry (a table of names and spellings), CarrierClient contract, CarrierRouter
     delivery-notes/         exports and delivery notes; types/, schemas/ (Zod) and pipeline/ (the steps)
@@ -116,7 +117,12 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
   - Prefer a table or a schema to `if` chains: the carrier registry, province and service aliases, filter decisions, delivery outcomes, HTTP answers and API field names are all tables.
   - Name every limit and status (`MIN_PACKAGES`, `Step.VALIDATE`, `HttpStatus.CREATED`); don't use bare literals.
 - **Idempotent means the same outcome.** If the carrier already has a shipment, it's `DELIVERED`, exactly like a new one; don't add an "already exists" case.
-- **Carriers:** the pipeline only sees a carrier through `CarrierAccess` (`pipeline/carrier-access.ts`), built from the client the `CarrierRouter` returns. Integrations live in `src/integrations/<carrier>/`; to add one, register its client in `CarriersModule`.
+- **Carriers:** the pipeline only sees a carrier through `CarrierAccess` (`pipeline/carrier-access.ts`), built from the client the `CarrierRouter` returns. Integrations live in `src/integrations/<carrier>/` (ADR 0007), in three parts:
+  - `<carrier>-client.ts`: extends `ApiClient` (`common/http/`) with one method per endpoint of the carrier's API, named and shaped like the API, returning the raw `ApiResponse`. No retries, no interpretation.
+  - `<carrier>.mapper.ts` (and `.schemas.ts`): plain functions from our types to request bodies and from `ApiResponse`s to outcomes.
+  - `<carrier>.carrier.ts`: the `CarrierClient` the pipeline uses, composing the client, the mapper and the retry policy.
+
+  To add a carrier, write those and register its `CarrierClient` in `CarriersModule`.
 - **Idempotency** is by `external_ref` (= `nro_remito`). Keep the rules in `SOLUCION.md` ("Idempotencia y reintentos") intact:
   - claim a shipment before working on it;
   - treat 409 as delivered;
