@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# `build` runs `prisma generate` first (no database needed).
 RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine
@@ -11,8 +12,10 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-# Local storage for uploaded exports (DELIVERY_NOTES_DIR), writable by `node`.
-RUN mkdir -p /app/uploads && chown node:node /app/uploads
+# Schema, migrations and CLI config, for `prisma migrate deploy` at start.
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/prisma7.config.ts ./
 USER node
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+# Apply pending migrations, then start the API.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

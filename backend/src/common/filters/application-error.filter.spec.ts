@@ -1,6 +1,7 @@
 import { ArgumentsHost, HttpServer, Logger } from '@nestjs/common';
 import {
   ApplicationError,
+  ConflictError,
   NotFoundError,
   UnprocessableContentError,
 } from '../errors/application.errors.js';
@@ -8,6 +9,7 @@ import { ApplicationErrorFilter } from './application-error.filter.js';
 
 class WidgetNotFoundError extends NotFoundError {}
 class InvalidWidgetError extends UnprocessableContentError {}
+class WidgetBusyError extends ConflictError {}
 class UnmappedError extends ApplicationError {}
 
 describe('ApplicationErrorFilter', () => {
@@ -38,6 +40,7 @@ describe('ApplicationErrorFilter', () => {
     it.each([
       [new WidgetNotFoundError('Widget 1 not found'), 404, 'Not Found'],
       [new InvalidWidgetError('Widget is broken'), 422, 'Unprocessable Entity'],
+      [new WidgetBusyError('Widget is busy'), 409, 'Conflict'],
     ])(
       'Given %s, when it is handled, then the answer is %i %s with its message',
       (error, statusCode, name) => {
@@ -52,7 +55,7 @@ describe('ApplicationErrorFilter', () => {
   });
 
   describe('Scenario: an application error kind with no mapping', () => {
-    it('Given an ApplicationError that is neither not-found nor unprocessable, when it is handled, then the answer is a 500 that does not leak its message', () => {
+    it('Given an ApplicationError of a kind with no mapping, when it is handled, then the answer is a 500 that does not leak its message', () => {
       filter.catch(new UnmappedError('internal detail'), host);
       expect(reply).toHaveBeenCalledWith(
         response,

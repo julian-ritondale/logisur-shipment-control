@@ -1,6 +1,7 @@
 import {
   ArgumentsHost,
   Catch,
+  ConflictException,
   HttpException,
   NotFoundException,
   UnprocessableEntityException,
@@ -8,6 +9,7 @@ import {
 import { BaseExceptionFilter } from '@nestjs/core';
 import {
   ApplicationError,
+  ConflictError,
   NotFoundError,
   UnprocessableContentError,
 } from '../errors/application.errors.js';
@@ -34,6 +36,9 @@ function toHttpException(error: ApplicationError): HttpException | undefined {
   }
   if (error instanceof UnprocessableContentError) {
     return new UnprocessableEntityException(error.message, { cause: error });
+  }
+  if (error instanceof ConflictError) {
+    return new ConflictException(error.message, { cause: error });
   }
   // An unmapped kind is a bug: Nest answers 500 and logs it.
   return undefined;

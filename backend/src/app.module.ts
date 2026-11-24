@@ -1,15 +1,26 @@
 import { Module, ValidationPipe } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
 import { ApplicationErrorFilter } from './common/filters/application-error.filter.js';
-import { DeliveryNotesModule } from './delivery-notes/delivery-notes.module.js';
+import { ENVIRONMENT_SCHEMA } from './config/env.schema.js';
+import { DeliveryNotesModule } from './modules/delivery-notes/delivery-notes.module.js';
+import { ReportsModule } from './modules/reports/reports.module.js';
+import { RunsModule } from './modules/runs/runs.module.js';
+import { ShipmentsModule } from './modules/shipments/shipments.module.js';
 
 @Module({
-  imports: [DeliveryNotesModule],
-  controllers: [AppController],
+  imports: [
+    // Loads .env (if present) and fails startup on a missing or invalid variable.
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: ENVIRONMENT_SCHEMA,
+    }),
+    DeliveryNotesModule,
+    RunsModule,
+    ReportsModule,
+    ShipmentsModule,
+  ],
   providers: [
-    AppService,
     // Registered as providers (not in main.ts) so tests that boot AppModule get them too.
     { provide: APP_FILTER, useClass: ApplicationErrorFilter },
     {

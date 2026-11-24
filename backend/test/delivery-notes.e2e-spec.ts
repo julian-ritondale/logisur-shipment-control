@@ -1,117 +1,180 @@
-import { INestApplication } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import request from 'supertest';
-import { App } from 'supertest/types.js';
+import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
-import { DELIVERY_NOTES_STORAGE } from './../src/delivery-notes/storage/delivery-notes.storage.js';
-import { LocalFileDeliveryNotesStorage } from './../src/delivery-notes/storage/local-file-delivery-notes.storage.js';
+import { resetDatabase } from './database.js';
 
-const EXPORT = JSON.stringify([
+const EXPORT = [
   { nro_remito: 'R-1', transportista: 'EXPRESO ANDINO', peso_kg: '145,1' },
   { nro_remito: 'R-2', transportista: 'Cruz del Norte', peso_kg: 12.5 },
-]);
+  { nro_remito: '', transportista: 'OCA' },
+];
 
-describe('Delivery notes (e2e)', () => {
+describe('Exports and delivery notes (e2e)', () => {
   let app: INestApplication<App>;
-  let dir: string;
+  const http = () => request(app.getHttpServer());
+  const upload = (content: string) =>
+    http()
+      .post('/exports')
+      .attach('file', Buffer.from(content), 'remitos.json');
 
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'delivery-notes-e2e-'));
+  beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
-    })
-      .overrideProvider(DELIVERY_NOTES_STORAGE)
-      .useValue(new LocalFileDeliveryNotesStorage(dir))
-      .compile();
-
+    }).compile();
     app = moduleFixture.createNestApplication();
     await app.init();
   });
 
-  afterEach(async () => {
-    await app.close();
-    await rm(dir, { recursive: true, force: true });
+  beforeEach(async () => {
+    await resetDatabase(app);
   });
 
-  const upload = (content: string) =>
-    request(app.getHttpServer())
-      .post('/delivery-notes')
-      .attach('file', Buffer.from(content), 'remitos_2026-09-30.json');
+  afterAll(async () => {
+    await app.close();
+  });
 
   describe('Scenario: uploading an export', () => {
-    it('Given a valid export, when it is POSTed to /delivery-notes, then it answers 201 with the id and every record untouched (nothing filtered)', async () => {
-      const response = await upload(EXPORT).expect(201);
-      expect(response.body).toEqual({
+    it('Given a valid export, when it is POSTed to /exports, then it answers 201 with its id and how many delivery notes it has', async () => {
+      const { body } = await upload(JSON.stringify(EXPORT)).expect(201);
+      expect(body).toEqual({
         id: expect.any(String),
-        count: 2,
-        deliveryNotes: JSON.parse(EXPORT),
+        uploadedAt: expect.any(String),
+        deliveryNoteCount: 3,
       });
     });
 
-    it('Given an uploaded export, when GET /delivery-notes/:id is called, then it answers 200 with the same records', async () => {
-      const { body } = await upload(EXPORT).expect(201);
-      await request(app.getHttpServer())
-        .get(`/delivery-notes/${body.id}`)
-        .expect(200)
-        .expect({ id: body.id, count: 2, deliveryNotes: JSON.parse(EXPORT) });
-    });
-  });
-
-  describe('Scenario: uploads that are rejected', () => {
-    it('Given no file in the request, when it is POSTed, then it answers 400', async () => {
-      await request(app.getHttpServer())
-        .post('/delivery-notes')
-        .field('other', 'value')
-        .expect(400);
-    });
-
-    it('Given a file that is not a JSON array, when it is POSTed, then it answers 422 with Nest’s standard error body', async () => {
-      const { body } = await upload('{"nro_remito": "R-1"}').expect(422);
-      expect(body).toEqual({
-        statusCode: 422,
-        error: 'Unprocessable Entity',
-        message: 'The export must be a JSON array of delivery notes',
-      });
-    });
-
-    it('Given a file over 5 MB, when it is POSTed, then it answers 413', async () => {
-      await upload(`[${' '.repeat(5 * 1024 * 1024)}]`).expect(413);
-    });
-  });
-
-  describe('Scenario: reading an export that does not exist or with an invalid id', () => {
-    it('Given an id with no stored export, when GET /delivery-notes/:id is called, then it answers 404', async () => {
-      const id = randomUUID();
-      const { body } = await request(app.getHttpServer())
-        .get(`/delivery-notes/${id}`)
-        .expect(404);
-      expect(body).toEqual({
-        statusCode: 404,
-        error: 'Not Found',
-        message: `Delivery notes export "${id}" not found`,
-      });
+    it('Given an uploaded export, when its content is fetched, then it is the file as uploaded', async () => {
+      const content = JSON.stringify(EXPORT);
+      const { body } = await upload(content).expect(201);
+      const response = await http()
+        .get(`/exports/${body.id}/content`)
+        .expect(200);
+      expect(response.headers['content-type']).toContain('application/json');
+      expect(response.text).toBe(content);
     });
 
     it.each([
-      ['does-not-exist.json', 'a file name'],
-      ['..', 'parent directory'],
-      ['%2E%2E%2Fsecret.json', 'encoded path traversal'],
-      ['6f1c2f1e-8f1a-11ef-8c5b-0242ac120002', 'a UUID that is not v4'],
+      [
+        '{"nro_remito": "R-1"}',
+        'The export must be a JSON array of delivery notes',
+      ],
+      ['[{"nro_remito": "R-1"},', 'The export is not valid JSON'],
     ])(
-      'Given the id %j (%s), when GET /delivery-notes/:id is called, then it answers 400 from request validation',
-      async (id, _case) => {
-        const { body } = await request(app.getHttpServer())
-          .get(`/delivery-notes/${id}`)
-          .expect(400);
+      'Given %j, when it is POSTed, then it answers 422 and nothing is stored',
+      async (content, message) => {
+        const { body } = await upload(content).expect(422);
         expect(body).toEqual({
-          statusCode: 400,
-          error: 'Bad Request',
-          message: ['id must be a UUID'],
+          statusCode: 422,
+          error: 'Unprocessable Entity',
+          message,
         });
+        expect((await http().get('/exports').expect(200)).body.items).toEqual(
+          [],
+        );
+      },
+    );
+
+    it('Given no file, when it is POSTed, then it answers 400', async () => {
+      await http().post('/exports').field('other', 'value').expect(400);
+    });
+  });
+
+  describe('Scenario: listing exports', () => {
+    it('Given two exports, when listed one per page, then each comes exactly once and the last page has no cursor', async () => {
+      const uploaded = [
+        (await upload('[]').expect(201)).body,
+        (await upload('[{}]').expect(201)).body,
+      ];
+      const page1 = (await http().get('/exports?limit=1').expect(200)).body;
+      const page2 = (
+        await http()
+          .get(`/exports?limit=1&after=${page1.nextCursor}`)
+          .expect(200)
+      ).body;
+      expect(page1.nextCursor).toBe(page1.items[0].id);
+      expect(page2.nextCursor).toBeUndefined();
+      expect([...page1.items, ...page2.items]).toEqual(
+        expect.arrayContaining(uploaded),
+      );
+      expect(page1.items[0].id).not.toBe(page2.items[0].id);
+    });
+
+    it('Given an export, when listed with uploadedFrom in the future, then it is not there', async () => {
+      await upload('[]').expect(201);
+      const { body } = await http()
+        .get('/exports?uploadedFrom=2999-01-01')
+        .expect(200);
+      expect(body.items).toEqual([]);
+    });
+  });
+
+  describe('Scenario: querying delivery notes', () => {
+    it('Given an uploaded export, when its delivery notes are listed, then each comes back as exported, with its number and carrier', async () => {
+      const { id } = (await upload(JSON.stringify(EXPORT)).expect(201)).body;
+      const { body } = await http()
+        .get(`/delivery-notes?exportId=${id}`)
+        .expect(200);
+      expect(body.items).toEqual([
+        {
+          id: expect.any(String),
+          exportId: id,
+          position: 0,
+          number: 'R-1',
+          carrier: 'EXPRESO_ANDINO',
+          raw: EXPORT[0],
+        },
+        {
+          id: expect.any(String),
+          exportId: id,
+          position: 1,
+          number: 'R-2',
+          carrier: 'CRUZ_DEL_NORTE',
+          raw: EXPORT[1],
+        },
+        { id: expect.any(String), exportId: id, position: 2, raw: EXPORT[2] },
+      ]);
+    });
+
+    it.each([
+      ['number=R-2', ['R-2']],
+      ['carrier=EXPRESO_ANDINO', ['R-1']],
+    ])(
+      'Given delivery notes, when filtered by %s, then only those come back',
+      async (query, numbers) => {
+        await upload(JSON.stringify(EXPORT)).expect(201);
+        const { body } = await http()
+          .get(`/delivery-notes?${query}`)
+          .expect(200);
+        expect(
+          body.items.map((note: { number: string }) => note.number),
+        ).toEqual(numbers);
+      },
+    );
+
+    it('Given a delivery note, when fetched by id, then it comes back', async () => {
+      await upload(JSON.stringify(EXPORT)).expect(201);
+      const [first] = (await http().get('/delivery-notes?limit=1').expect(200))
+        .body.items;
+      await http().get(`/delivery-notes/${first.id}`).expect(200).expect(first);
+    });
+  });
+
+  describe('Scenario: what does not exist or is not valid', () => {
+    it.each([
+      [`/exports/${randomUUID()}`, 404],
+      [`/exports/${randomUUID()}/content`, 404],
+      [`/delivery-notes/${randomUUID()}`, 404],
+      ['/exports/not-a-uuid', 400],
+      ['/exports?uploadedFrom=yesterday', 400],
+      ['/delivery-notes?carrier=OCA', 400],
+      ['/delivery-notes?limit=101', 400],
+    ])(
+      'Given GET %s, when called, then it answers %i',
+      async (path, status) => {
+        await http().get(path).expect(status);
       },
     );
   });

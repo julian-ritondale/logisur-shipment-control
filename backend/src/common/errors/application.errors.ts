@@ -16,3 +16,6 @@ export class NotFoundError extends ApplicationError {}
 
 /** The input is well-formed as a request but its content can't be used. Answered with 422. */
 export class UnprocessableContentError extends ApplicationError {}
+
+/** The request conflicts with the resource's current state. Answered with 409. */
+export class ConflictError extends ApplicationError {}

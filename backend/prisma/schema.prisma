@@ -1,0 +1,169 @@
+// Data model of the remitos → carrier pipeline. See SOLUCION.md and ADR 0005.
+// Stored values (enums, reason codes) are English.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PipelineStep {
+  UPLOAD
+  NORMALIZE
+  FILTER
+  VALIDATE
+  MAP
+  DELIVER
+}
+
+enum RunKind {
+  INITIAL
+  RETRY
+}
+
+enum RunStatus {
+  RUNNING
+  COMPLETED
+  COMPLETED_WITH_FAILURES
+  FAILED
+}
+
+enum ShipmentStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  FAILED
+}
+
+enum AttemptOutcome {
+  DELIVERED
+  SKIPPED
+  FAILED
+}
+
+/// An uploaded export, stored byte for byte as received.
+model DeliveryNotesExport {
+  id         String   @id @db.Uuid
+  content    Bytes
+  uploadedAt DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(3)
+
+  deliveryNotes DeliveryNote[]
+  runs          Run[]
+
+  @@map("delivery_notes_exports")
+}
+
+/// Every remito of an export, for every carrier, exactly as exported.
+model DeliveryNote {
+  id       String  @id @default(uuid()) @db.Uuid
+  exportId String  @map("export_id") @db.Uuid
+  /// Zero-based position in the export array.
+  position Int
+  /// `nro_remito` as exported (trimmed), when it is a non-empty string.
+  number   String?
+  /// The carrier `transportista` names, when it is a known one. For queries.
+  carrier  String?
+  raw      Json
+
+  export    DeliveryNotesExport @relation(fields: [exportId], references: [id], onDelete: Cascade)
+  shipments Shipment[]
+  attempts  Attempt[]
+
+  @@unique([exportId, position])
+  @@index([number])
+  @@index([carrier])
+  @@map("delivery_notes")
+}
+
+/// One execution of the pipeline: an initial run over an export, or a retry.
+model Run {
+  id          String    @id @default(uuid()) @db.Uuid
+  exportId    String    @map("export_id") @db.Uuid
+  carrier     String
+  kind        RunKind
+  parentRunId String?   @map("parent_run_id") @db.Uuid
+  status      RunStatus @default(RUNNING)
+  total       Int       @default(0)
+  delivered   Int       @default(0)
+  failed      Int       @default(0)
+  skipped     Int       @default(0)
+  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz(3)
+  finishedAt  DateTime? @map("finished_at") @db.Timestamptz(3)
+
+  export    DeliveryNotesExport @relation(fields: [exportId], references: [id], onDelete: Cascade)
+  parentRun Run?                @relation("RunRetries", fields: [parentRunId], references: [id], onDelete: SetNull)
+  retries   Run[]               @relation("RunRetries")
+  attempts  Attempt[]
+
+  @@index([startedAt, id])
+  @@index([exportId])
+  @@index([status])
+  @@map("runs")
+}
+
+/// A remito on its way to a carrier. Unique per carrier and remito number,
+/// which is also the carrier's idempotency key (`external_ref`). Each step
+/// stores its output so a retry resumes where the last attempt failed.
+model Shipment {
+  id                String         @id @default(uuid()) @db.Uuid
+  carrier           String
+  externalRef       String         @map("external_ref")
+  /// The remito this shipment was last processed from.
+  deliveryNoteId    String         @map("delivery_note_id") @db.Uuid
+  status            ShipmentStatus @default(PENDING)
+  lastCompletedStep PipelineStep?  @map("last_completed_step")
+  failedStep        PipelineStep?  @map("failed_step")
+  reasonCode        String?        @map("reason_code")
+  reasonMessage     String?        @map("reason_message")
+  /// Output of NORMALIZE.
+  normalized        Json?
+  /// Hash of `normalized`: detects the same remito number re-sent with different data.
+  contentHash       String?        @map("content_hash")
+  /// Output of MAP: the request sent to the carrier.
+  payload           Json?
+  /// Output of DELIVER.
+  trackingId        String?        @map("tracking_id")
+  deliveredAt       DateTime?      @map("delivered_at") @db.Timestamptz(3)
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  attempts     Attempt[]
+
+  @@unique([carrier, externalRef])
+  @@index([status])
+  @@map("shipments")
+}
+
+/// What happened to one remito in one run: where it started, how far it got,
+/// and why it stopped. Skipped and unidentifiable remitos have no shipment.
+model Attempt {
+  id              String         @id @default(uuid()) @db.Uuid
+  runId           String         @map("run_id") @db.Uuid
+  deliveryNoteId  String         @map("delivery_note_id") @db.Uuid
+  shipmentId      String?        @map("shipment_id") @db.Uuid
+  fromStep        PipelineStep   @map("from_step")
+  reachedStep     PipelineStep   @map("reached_step")
+  outcome         AttemptOutcome
+  failedStep      PipelineStep?  @map("failed_step")
+  reasonCode      String?        @map("reason_code")
+  reasonMessage   String?        @map("reason_message")
+  /// Every problem found, when VALIDATE found more than one.
+  issues          Json?
+  trackingId      String?        @map("tracking_id")
+  /// Technical context for support (HTTP status, carrier error body, ...).
+  technicalDetail Json?          @map("technical_detail")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  run          Run          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  shipment     Shipment?    @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+
+  @@index([runId, outcome])
+  @@index([shipmentId])
+  @@index([reasonCode])
+  @@map("attempts")
+}
