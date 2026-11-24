@@ -70,6 +70,8 @@ const MESSAGES: Record<Cause, (params: ReasonParams) => string> = {
   INVALID_CARRIER_CREDENTIALS: () =>
     'The carrier refused our credentials; check the integration settings and retry',
   // Anything else
+  RUN_INTERRUPTED: () =>
+    'The run stopped (the system restarted) before this delivery note finished; retry it',
   INTERNAL_ERROR: () =>
     'Unexpected error while processing; retry it, and contact support if it keeps failing',
 };

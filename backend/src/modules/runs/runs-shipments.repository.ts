@@ -6,6 +6,7 @@ import {
   ShipmentStatus,
 } from '../../generated/prisma/client.js';
 import type { JsonObject } from '../../common/types/json.js';
+import type { Reason } from '../../common/types/pipeline.types.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { Carrier } from '../carriers/carrier-registry.js';
 import type { LoadedShipment } from './pipeline/filter/filters.js';
@@ -205,6 +206,34 @@ export class RunsShipmentsRepository {
         reasonMessage: null,
       },
     });
+  }
+
+  /**
+   * Fails every shipment still `PROCESSING` with `reason`, so it can be
+   * retried. One with a stored request resumes at DELIVER (looking the
+   * reference up first), the rest from VALIDATE. Returns how many there were.
+   */
+  async failProcessing({ cause, message }: Reason): Promise<number> {
+    const failed = (failedStep: PipelineStep) => ({
+      status: ShipmentStatus.FAILED,
+      failedStep,
+      cause,
+      reasonMessage: message,
+    });
+    const [withRequest, withoutRequest] = await this.prisma.$transaction([
+      this.prisma.shipment.updateMany({
+        where: {
+          status: ShipmentStatus.PROCESSING,
+          payload: { not: Prisma.DbNull },
+        },
+        data: failed(PipelineStep.DELIVER),
+      }),
+      this.prisma.shipment.updateMany({
+        where: { status: ShipmentStatus.PROCESSING },
+        data: failed(PipelineStep.VALIDATE),
+      }),
+    ]);
+    return withRequest.count + withoutRequest.count;
   }
 
   async markFailed(

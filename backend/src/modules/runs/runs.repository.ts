@@ -150,6 +150,15 @@ export class RunsRepository {
     });
   }
 
+  /** Closes every run still `RUNNING` as `FAILED`. Returns how many there were. */
+  async abortRunning(): Promise<number> {
+    const { count } = await this.prisma.run.updateMany({
+      where: { status: RunStatus.RUNNING },
+      data: { status: RunStatus.FAILED, finishedAt: new Date() },
+    });
+    return count;
+  }
+
   async abort(runId: string): Promise<void> {
     await this.prisma.run.update({
       where: { id: runId },

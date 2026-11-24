@@ -1,4 +1,9 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnApplicationBootstrap,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { EnvConfig } from '../../config/env.schema.js';
 import {
@@ -72,7 +77,7 @@ const DECISION_RESULTS: {
 
 /** Runs the delivery notes pipeline over an export (or retries failed shipments) and records what happened. */
 @Injectable()
-export class RunsService {
+export class RunsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(RunsService.name);
   private readonly carrier: Carrier;
 
@@ -85,6 +90,23 @@ export class RunsService {
     @Inject(ConfigService) config: EnvConfig,
   ) {
     this.carrier = config.get('CARRIER', { infer: true });
+  }
+
+  /**
+   * A run is processed inside one request, on one instance: at startup no run
+   * can still be working. Whatever a crash or restart left half-done fails
+   * now, so its shipments can be retried instead of staying PROCESSING forever.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    const shipments = await this.shipments.failProcessing(
+      reason(Cause.RUN_INTERRUPTED),
+    );
+    const runs = await this.runs.abortRunning();
+    if (runs > 0 || shipments > 0) {
+      this.logger.warn(
+        `Recovered from an interrupted run: ${runs} run(s) failed, ${shipments} shipment(s) ready to retry`,
+      );
+    }
   }
 
   async start(exportId: string): Promise<RunResponseDto> {

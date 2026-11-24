@@ -230,6 +230,7 @@ Estados de una corrida: `RUNNING`, `COMPLETED`, `COMPLETED_WITH_FAILURES` y `FAI
 | `REJECTED_BY_CARRIER` | DELIVER | fallido | The carrier rejected the shipment (postal code: …) | Corregir los datos |
 | `CARRIER_UNAVAILABLE` | VALIDATE / DELIVER | fallido | The carrier's service is not responding; retry later | **Sí** |
 | `INVALID_CARRIER_CREDENTIALS` | VALIDATE / DELIVER | fallido | The carrier refused our credentials; … | Sí, después de corregir la configuración |
+| `RUN_INTERRUPTED` | el paso en que quedó | fallido | The run stopped (the system restarted) before this delivery note finished; retry it | Sí, por envío |
 | `INTERNAL_ERROR` | cualquiera | fallido | Unexpected error while processing; retry it … | Sí |
 
 `retryable` dice si el envío **se puede** reintentar ahora (sigue en estado `FAILED`). Los fallos de filtrado no tienen envío: se resuelven corrigiendo la exportación.
@@ -297,7 +298,7 @@ Para **corregir datos** (por ejemplo, el código postal que falta) se sube una e
 
 ### Limitaciones conocidas
 
-- **Si el proceso se cae a mitad de una corrida,** los envíos que estaban en `PROCESSING` quedan así y no se pueden reintentar por la API. La corrida queda `RUNNING` o `FAILED`. En producción, un job periódico los devolvería a `FAILED`.
+- **Si el proceso se cae a mitad de una corrida,** al volver a arrancar la corrida queda `FAILED` y sus envíos en `PROCESSING` pasan a `FAILED` con `RUN_INTERRUPTED`. Se reintentan de a uno (`POST /shipments/:id/retries`); el que ya tenía su request guardado retoma en DELIVER, buscando la referencia antes de reenviar. El reintento de la corrida entera no los incluye, porque no llegaron a registrar un intento en ella. Esto supone una sola instancia del backend: con varias, una que arranca no puede saber si otra sigue trabajando.
 - **Un request largo puede cortarse por timeout** de un proxy si la exportación es grande o el transportista está lento, porque cada envío puede esperar sus reintentos. Es la razón principal para pasar a asíncrono.
 
 ## Hoja de ruta para un producto real

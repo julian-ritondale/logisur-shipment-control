@@ -139,6 +139,7 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
   - treat 409 as loaded;
   - look a reference up before re-POSTing after an ambiguous failure;
   - don't send without a stored payload.
+- **Interrupted runs:** at startup, `RunsService.onApplicationBootstrap` fails runs still `RUNNING` and shipments still `PROCESSING` (`RUN_INTERRUPTED`), so they can be retried. It assumes one backend instance, as synchronous runs do.
 - **Stored values are English enums** that match `prisma/schema.prisma`.
 
 ## Database (Prisma 7 + PostgreSQL)

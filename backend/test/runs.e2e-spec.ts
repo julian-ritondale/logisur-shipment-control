@@ -16,6 +16,8 @@ import {
 } from './../src/modules/carriers/carrier-client.js';
 import { PROVINCES } from './../src/modules/delivery-notes/schemas/delivery-note.schemas.js';
 import type { ValidDeliveryNote } from './../src/modules/delivery-notes/types/delivery-note.types.js';
+import { RunsService } from './../src/modules/runs/runs.service.js';
+import { PrismaService } from './../src/prisma/prisma.service.js';
 import { resetDatabase } from './database.js';
 
 /** Stands in for the carrier: scripted outcomes per delivery note, LOADED otherwise; scripted tracking, CREATED otherwise. */
@@ -356,6 +358,38 @@ describe('Runs, reports and shipments (e2e)', () => {
   });
 
   describe('Scenario: retries resume where each shipment stopped', () => {
+    it('Given the system stopped mid-run, when it starts again, then the run fails and its shipments can be retried from where they were', async () => {
+      carrier.outcomes.set('R-1', [
+        { status: DeliveryStatus.UNAVAILABLE, detail: { status: 503 } },
+      ]);
+      const first = await run([deliveryNote('R-1', 'EXPRESO ANDINO')]);
+      // What a crash during DELIVER leaves behind: the run RUNNING, the shipment PROCESSING with its request stored.
+      const prisma = app.get(PrismaService);
+      await prisma.run.update({
+        where: { id: first.id },
+        data: { status: 'RUNNING', finishedAt: null },
+      });
+      await prisma.shipment.updateMany({
+        data: { status: 'PROCESSING', failedStep: null, cause: null },
+      });
+
+      await app.get(RunsService).onApplicationBootstrap();
+
+      expect(
+        (await http().get(`/runs/${first.id}`).expect(200)).body.status,
+      ).toBe('FAILED');
+      const shipment = await shipmentOf('R-1');
+      expect(shipment).toMatchObject({
+        status: 'FAILED',
+        failedStep: 'DELIVER',
+        cause: 'RUN_INTERRUPTED',
+      });
+      const { body } = await http()
+        .post(`/shipments/${shipment.id}/retries`)
+        .expect(201);
+      expect(body.totals).toMatchObject({ total: 1, loaded: 1 });
+    });
+
     it('Given a failed delivery, when the shipment is retried, then only the delivery is repeated, with the stored request', async () => {
       carrier.outcomes.set('R-1', [
         { status: DeliveryStatus.UNAVAILABLE, detail: { status: 503 } },
