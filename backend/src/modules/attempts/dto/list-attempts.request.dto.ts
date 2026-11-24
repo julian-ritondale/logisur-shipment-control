@@ -1,40 +1,21 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
-import { PageRequestDto } from '../../../common/dto/page.request.dto.js';
+import { z } from 'zod';
 import {
-  Cause,
-  OUTCOMES,
-  type Outcome,
-  STEPS,
-  type Step,
-} from '../../../common/types/pipeline.types.js';
+  MAX_NUMBER_LENGTH,
+  PAGE_REQUEST_SCHEMA,
+} from '../../../common/dto/page.request.dto.js';
+import { Cause, Outcome, Step } from '../../../common/types/pipeline.types.js';
 
-const MAX_NUMBER_LENGTH = 100;
-
-export class ListAttemptsRequestDto extends PageRequestDto {
-  @IsOptional()
-  @IsUUID('4')
-  runId?: string;
-
-  @IsOptional()
-  @IsUUID('4')
-  shipmentId?: string;
-
-  @IsOptional()
-  @IsIn(OUTCOMES)
-  outcome?: Outcome;
-
+export const LIST_ATTEMPTS_REQUEST_SCHEMA = PAGE_REQUEST_SCHEMA.extend({
+  runId: z.uuidv4().optional(),
+  shipmentId: z.uuidv4().optional(),
+  outcome: z.enum(Outcome).optional(),
   /** Where the attempt stopped. */
-  @IsOptional()
-  @IsIn(STEPS)
-  step?: Step;
-
-  @IsOptional()
-  @IsIn(Object.values(Cause))
-  cause?: Cause;
-
+  step: z.enum(Step).optional(),
+  cause: z.enum(Cause).optional(),
   /** `nro_remito`. */
-  @IsOptional()
-  @IsString()
-  @MaxLength(MAX_NUMBER_LENGTH)
-  deliveryNoteNumber?: string;
-}
+  deliveryNoteNumber: z.string().max(MAX_NUMBER_LENGTH).optional(),
+});
+
+export type ListAttemptsRequestDto = z.infer<
+  typeof LIST_ATTEMPTS_REQUEST_SCHEMA
+>;

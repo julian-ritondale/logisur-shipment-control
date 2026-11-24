@@ -1,22 +1,13 @@
-import { IsIn, IsOptional, IsUUID } from 'class-validator';
-import { PageRequestDto } from '../../../common/dto/page.request.dto.js';
+import { z } from 'zod';
+import { PAGE_REQUEST_SCHEMA } from '../../../common/dto/page.request.dto.js';
 import { RunKind, RunStatus } from '../../../generated/prisma/client.js';
 import { Carrier } from '../../carriers/carrier-registry.js';
 
-export class ListRunsRequestDto extends PageRequestDto {
-  @IsOptional()
-  @IsIn(Object.values(RunStatus))
-  status?: RunStatus;
+export const LIST_RUNS_REQUEST_SCHEMA = PAGE_REQUEST_SCHEMA.extend({
+  status: z.enum(RunStatus).optional(),
+  kind: z.enum(RunKind).optional(),
+  exportId: z.uuidv4().optional(),
+  carrier: z.enum(Carrier).optional(),
+});
 
-  @IsOptional()
-  @IsIn(Object.values(RunKind))
-  kind?: RunKind;
-
-  @IsOptional()
-  @IsUUID('4')
-  exportId?: string;
-
-  @IsOptional()
-  @IsIn(Object.values(Carrier))
-  carrier?: Carrier;
-}
+export type ListRunsRequestDto = z.infer<typeof LIST_RUNS_REQUEST_SCHEMA>;

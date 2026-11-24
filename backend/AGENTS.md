@@ -22,12 +22,12 @@ Nest has first-party packages for these, so check them before adding another lib
 Before adding a filter, pipe, guard, interceptor or helper module, check whether Nest already does the job (see "Use the framework before writing your own" in the root `AGENTS.md`). Look at the docs, the `@nestjs/*` `.d.ts` files in `node_modules`, and the skills in `.claude/skills/`. In this project:
 
 - **Errors:** Nest's built-in exception handler already answers every `HttpException` with its status and the standard `{ statusCode, message, error }` body. It also turns unknown errors into a logged 500. Don't write a catch-all filter. Services throw `ApplicationError` kinds (`src/common/errors/`), and `ApplicationErrorFilter` only maps them to Nest exceptions. To add a new kind, add one mapping there.
-- **Validation:** a global `ValidationPipe` (in `AppModule` as `APP_PIPE`) with class-validator DTOs. Don't check request input by hand in controllers.
+- **Validation:** Zod everywhere (ADR 0013). A global `StandardSchemaValidationPipe` (in `AppModule` as `APP_PIPE`) validates every parameter declared with a schema, `@Query({ schema })`, `@Body({ schema })` or `@Param('id', { schema: ID_SCHEMA })`, and hands the handler the parsed value (coerced numbers and dates, defaults applied). Request schemas are `z.strictObject`s, so an unknown field is a 400. Don't check request input by hand in controllers, and don't add class-validator back.
 - **Uploads:** `FileInterceptor` with multer `limits` (over the limit is a 413) and `ParseFilePipe` (a missing file is a 400).
 - **Configuration:** `@nestjs/config` validates the environment against the Zod schema in `src/config/env.schema.ts` and serves the parsed values (defaults applied, `PORT` a number). Inject `ConfigService` typed as `EnvConfig` and read with `config.get('NAME', { infer: true })`; never read `process.env` or cast with `getOrThrow<string>`. A new variable is one line in the schema.
 - **Global pipes, filters and guards:** register them as `APP_*` providers in `AppModule`, not in `main.ts`, so tests that boot `AppModule` get them too.
 
-Validation works with Zod, Valibot, ArkType or any other Standard Schema library, with no classes or decorator metadata: `StandardSchemaValidationPipe` with `@Body({ schema })` or `@Param('id', { schema })` (https://docs.nestjs.com/application/validation.md). `class-validator` still works, through `ValidationPipe`.
+Validation works with Zod, Valibot, ArkType or any other Standard Schema library, with no classes or decorator metadata: `StandardSchemaValidationPipe` with `@Body({ schema })` or `@Param('id', { schema })` (https://docs.nestjs.com/application/validation.md). This project uses it with Zod.
 
 `NodeAdapter` from `@nestjs/platform-node` is the fastest HTTP adapter, ahead of Fastify (https://docs.nestjs.com/http/performance.md).
 
@@ -78,10 +78,10 @@ src/
   - The service holds the rules. It knows nothing about HTTP (no Express, no multer, no `HttpException`) and takes plain values such as a `Buffer`, so a CLI, a job or a queue worker can call it too.
   - The repository holds the queries.
 - **DTOs.** Name them by direction, one per use case:
-  - `*.request.dto.ts` / `XxxRequestDto` for validated input (params, query, body);
+  - `*.request.dto.ts` for validated input (query, body): a Zod schema `XXX_REQUEST_SCHEMA` and its type `XxxRequestDto = z.infer<...>`. Listings extend `PAGE_REQUEST_SCHEMA`;
   - `*.response.dto.ts` / `XxxResponseDto` for output, built from the service's result.
 
-  Keep them in the feature's `dto/` folder. Shared ones (`IdRequestDto`, `PageRequestDto`, `PageResponseDto`) are in `common/dto/`.
+  Keep them in the feature's `dto/` folder. Shared ones (`ID_SCHEMA`, `PAGE_REQUEST_SCHEMA`, `PageResponseDto`) are in `common/dto/`. Response DTOs are plain classes, built by the mappers.
 - **Mappers.** Each package converts between DTOs and its own types in `<feature>.mapper.ts`, as plain functions: `toXxxDto(row)` builds a response DTO, and `fromXxxRequestDto(dto)` turns a request DTO into what the repository takes (listings use `fromPageRequestDto` to split off the cursor). Services call the mapper and never build or pick apart DTOs inline.
 - **Swappable parts are interfaces injected by token.** A dependency that could have several implementations is a small TypeScript `interface` plus a `Symbol` token, both in the same file:
   - where exports are stored (`EXPORTS_STORAGE`);
@@ -94,7 +94,7 @@ src/
   - `NotFoundError` → 404
   - `UnprocessableContentError` → 422
   - `ConflictError` → 409
-- **Ids in URLs are opaque UUIDs**, validated with `IdRequestDto` (`@IsUUID('4')`). Don't leak storage details such as file names or extensions into the API.
+- **Ids in URLs are opaque UUIDs**, validated with `ID_SCHEMA` (`z.uuidv4()`). Don't leak storage details such as file names or extensions into the API.
 
 ## The delivery notes pipeline (`modules/runs/pipeline/`)
 

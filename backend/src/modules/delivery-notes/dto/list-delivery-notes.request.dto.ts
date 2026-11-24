@@ -1,21 +1,17 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
-import { PageRequestDto } from '../../../common/dto/page.request.dto.js';
+import { z } from 'zod';
+import {
+  MAX_NUMBER_LENGTH,
+  PAGE_REQUEST_SCHEMA,
+} from '../../../common/dto/page.request.dto.js';
 import { Carrier } from '../../carriers/carrier-registry.js';
 
-const MAX_NUMBER_LENGTH = 100;
-
-export class ListDeliveryNotesRequestDto extends PageRequestDto {
-  @IsOptional()
-  @IsUUID('4')
-  exportId?: string;
-
+export const LIST_DELIVERY_NOTES_REQUEST_SCHEMA = PAGE_REQUEST_SCHEMA.extend({
+  exportId: z.uuidv4().optional(),
   /** `nro_remito`. */
-  @IsOptional()
-  @IsString()
-  @MaxLength(MAX_NUMBER_LENGTH)
-  number?: string;
+  number: z.string().max(MAX_NUMBER_LENGTH).optional(),
+  carrier: z.enum(Carrier).optional(),
+});
 
-  @IsOptional()
-  @IsIn(Object.values(Carrier))
-  carrier?: Carrier;
-}
+export type ListDeliveryNotesRequestDto = z.infer<
+  typeof LIST_DELIVERY_NOTES_REQUEST_SCHEMA
+>;

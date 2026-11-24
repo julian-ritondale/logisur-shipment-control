@@ -1,4 +1,4 @@
-import { Module, ValidationPipe } from '@nestjs/common';
+import { Module, StandardSchemaValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ApplicationErrorFilter } from './common/filters/application-error.filter.js';
@@ -25,14 +25,8 @@ import { ShipmentsModule } from './modules/shipments/shipments.module.js';
   providers: [
     // Registered as providers (not in main.ts) so tests that boot AppModule get them too.
     { provide: APP_FILTER, useClass: ApplicationErrorFilter },
-    {
-      provide: APP_PIPE,
-      useValue: new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    },
+    // Validates every parameter declared with `{ schema }` (Zod) and passes on the parsed value.
+    { provide: APP_PIPE, useValue: new StandardSchemaValidationPipe() },
   ],
 })
 export class AppModule {}
