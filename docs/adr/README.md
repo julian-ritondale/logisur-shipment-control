@@ -12,3 +12,4 @@ Significant decisions for this project are recorded here, one per file, using th
 | [0002](0002-initial-stack-and-repository-layout.md) | Initial stack and repository layout | Accepted |
 | [0003](0003-frontend-ui-stack-tailwind-and-shadcn.md) | Frontend UI stack: Tailwind CSS and shadcn/ui | Accepted |
 | [0004](0004-delivery-notes-export-storage.md) | Storage for uploaded delivery notes exports | Accepted |
+| [0005](0005-functional-pipeline-persistence-and-idempotent-delivery.md) | Functional pipeline, per-step persistence and idempotent delivery | Accepted |

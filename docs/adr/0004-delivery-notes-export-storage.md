@@ -1,6 +1,7 @@
 # 0004. Storage for uploaded delivery notes exports
 
 - **Status:** Accepted
+- **Note:** The storage is now PostgreSQL (`PrismaDeliveryNotesStorage`), as anticipated below, and the local-file implementation was removed. See [ADR 0005](0005-functional-pipeline-persistence-and-idempotent-delivery.md).
 - **Date:** 2026-11-24
 
 ## Context
