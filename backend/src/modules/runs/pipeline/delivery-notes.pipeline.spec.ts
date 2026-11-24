@@ -3,6 +3,7 @@ import {
   DeliveryStatus,
   type CarrierClient,
   type DeliveryOutcome,
+  CarrierStatus,
 } from '../../carriers/carrier-client.js';
 import { Carrier } from '../../carriers/carrier-registry.js';
 import type {
@@ -23,6 +24,8 @@ class FakeCarrier implements CarrierClient {
       trackingId: `TRK-${request.ref as string}`,
     }),
   );
+
+  readonly track = vi.fn(async () => ({ status: CarrierStatus.CREATED }));
 
   toShipmentRequest(note: ValidDeliveryNote): JsonObject {
     return { ref: note.number };

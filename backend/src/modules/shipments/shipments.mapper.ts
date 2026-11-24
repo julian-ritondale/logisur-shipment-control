@@ -2,8 +2,9 @@ import {
   fromPageRequestDto,
   type PageQuery,
 } from '../../common/dto/page.request.dto.js';
+import { startOfUtcDay, toIsoDate } from '../../common/types/date.js';
 import type { JsonObject } from '../../common/types/json.js';
-import type { Shipment } from '../../generated/prisma/client.js';
+import { CarrierStatus, type Shipment } from '../../generated/prisma/client.js';
 import { carrierName, isCarrier } from '../carriers/carrier-registry.js';
 import type { NormalizedDeliveryNote } from '../delivery-notes/types/delivery-note.types.js';
 import type { ListShipmentsRequestDto } from './dto/list-shipments.request.dto.js';
@@ -11,14 +12,42 @@ import type {
   ShipmentDetailResponseDto,
   ShipmentResponseDto,
 } from './dto/shipment.response.dto.js';
+import type { StatusCheckResponseDto } from './dto/status-check.response.dto.js';
 import type { ShipmentFilters } from './shipments.repository.js';
 import { type Cause } from '../../common/types/pipeline.types.js';
 
+/** `late` is judged against `now`'s day. */
 export const fromListShipmentsRequestDto = (
-  dto: ListShipmentsRequestDto,
-): PageQuery<ShipmentFilters> => fromPageRequestDto(dto);
+  { late, ...dto }: ListShipmentsRequestDto,
+  now: Date,
+): PageQuery<ShipmentFilters> => {
+  const { filters, after, limit } = fromPageRequestDto(dto);
+  return {
+    filters: {
+      ...filters,
+      late:
+        late === undefined
+          ? undefined
+          : { value: late, today: startOfUtcDay(now) },
+    },
+    after,
+    limit,
+  };
+};
 
-export const toShipmentDto = (row: Shipment): ShipmentResponseDto => ({
+/** Past its estimated delivery day, and the carrier hasn't delivered it to the customer. */
+export const isLate = (
+  { estimatedDelivery, carrierStatus }: Shipment,
+  now: Date,
+): boolean =>
+  estimatedDelivery !== null &&
+  carrierStatus !== CarrierStatus.DELIVERED &&
+  estimatedDelivery < startOfUtcDay(now);
+
+export const toShipmentDto = (
+  row: Shipment,
+  now: Date = new Date(),
+): ShipmentResponseDto => ({
   id: row.id,
   carrier: row.carrier,
   carrierName: isCarrier(row.carrier) ? carrierName(row.carrier) : row.carrier,
@@ -31,6 +60,12 @@ export const toShipmentDto = (row: Shipment): ShipmentResponseDto => ({
   reason: row.reasonMessage ?? undefined,
   trackingId: row.trackingId ?? undefined,
   loadedAt: row.loadedAt ?? undefined,
+  carrierStatus: row.carrierStatus ?? undefined,
+  estimatedDelivery: row.estimatedDelivery
+    ? toIsoDate(row.estimatedDelivery)
+    : undefined,
+  statusCheckedAt: row.statusCheckedAt ?? undefined,
+  late: isLate(row, now),
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
@@ -41,3 +76,24 @@ export const toShipmentDetailDto = (row: Shipment): ShipmentDetailResponseDto =>
       (row.normalized as unknown as NormalizedDeliveryNote | null) ?? undefined,
     payload: (row.payload as JsonObject | null) ?? undefined,
   });
+
+/** What a status check found, before it becomes a response. */
+export interface StatusCheck {
+  checked: number;
+  failed: number;
+  attention: { late: number; exceptions: number };
+  checkedAt: Date;
+}
+
+export const toStatusCheckDto = ({
+  checked,
+  failed,
+  attention,
+  checkedAt,
+}: StatusCheck): StatusCheckResponseDto => ({
+  checked,
+  failed,
+  late: attention.late,
+  exceptions: attention.exceptions,
+  checkedAt,
+});

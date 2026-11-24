@@ -21,3 +21,4 @@ Significant decisions for this project are recorded here, one per file, using th
 | [0012](0012-one-carrier-per-deployment-without-routing.md) | One carrier per deployment, without routing | Accepted |
 | [0013](0013-validate-requests-with-zod.md) | Validate requests with Zod | Superseded by 0014 |
 | [0014](0014-class-validator-for-dtos-zod-for-data.md) | class-validator for DTOs, Zod for data | Accepted |
+| [0015](0015-track-loaded-shipments-on-demand.md) | Track loaded shipments on demand | Accepted |

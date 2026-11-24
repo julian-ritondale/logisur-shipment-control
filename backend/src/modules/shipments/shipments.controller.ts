@@ -7,6 +7,7 @@ import type {
   ShipmentDetailResponseDto,
   ShipmentResponseDto,
 } from './dto/shipment.response.dto.js';
+import type { StatusCheckResponseDto } from './dto/status-check.response.dto.js';
 import { ShipmentsService } from './shipments.service.js';
 
 @Controller('shipments')
@@ -18,6 +19,12 @@ export class ShipmentsController {
     @Query() query: ListShipmentsRequestDto,
   ): Promise<PageResponseDto<ShipmentResponseDto>> {
     return this.shipments.list(query);
+  }
+
+  /** Asks the carrier where every loaded, undelivered shipment is (status and estimated delivery). */
+  @Post('status-checks')
+  checkStatuses(): Promise<StatusCheckResponseDto> {
+    return this.shipments.checkStatuses();
   }
 
   @Get(':id')

@@ -1,5 +1,6 @@
 import type { JsonObject } from '../../../common/types/json.js';
 import type {
+  CarrierStatus,
   PipelineStep,
   ShipmentStatus,
 } from '../../../generated/prisma/client.js';
@@ -20,6 +21,13 @@ export class ShipmentResponseDto {
   reason?: string;
   trackingId?: string;
   loadedAt?: Date;
+  /** The carrier's tracking status at the last status check (`POST /shipments/status-checks`). */
+  carrierStatus?: CarrierStatus;
+  /** `YYYY-MM-DD`, from the carrier. */
+  estimatedDelivery?: string;
+  statusCheckedAt?: Date;
+  /** Past its estimated delivery and not delivered to the customer. */
+  late: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

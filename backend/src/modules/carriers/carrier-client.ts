@@ -27,6 +27,24 @@ export type DeliveryOutcome =
 export type CarrierRequestErrorKind =
   typeof DeliveryStatus.UNAUTHORIZED | typeof DeliveryStatus.UNAVAILABLE;
 
+/** The carrier's tracking status. Values match the Prisma enum `CarrierStatus`. */
+export const CarrierStatus = {
+  CREATED: 'CREATED',
+  IN_TRANSIT: 'IN_TRANSIT',
+  /** The customer received it. */
+  DELIVERED: 'DELIVERED',
+  EXCEPTION: 'EXCEPTION',
+} as const;
+
+export type CarrierStatus = (typeof CarrierStatus)[keyof typeof CarrierStatus];
+
+/** Where a loaded shipment is, as the carrier tracks it. */
+export interface Tracking {
+  status: CarrierStatus;
+  /** `YYYY-MM-DD`, when the carrier gives one. */
+  estimatedDelivery?: string;
+}
+
 /** A carrier request that failed outright (e.g. fetching its provinces). */
 export class CarrierRequestError extends Error {
   constructor(
@@ -51,4 +69,7 @@ export interface CarrierClient {
 
   /** Never creates a second shipment for the same delivery note number. */
   deliver(request: JsonObject): Promise<DeliveryOutcome>;
+
+  /** The carrier's tracking of a shipment it has. Throws `CarrierRequestError`. */
+  track(trackingId: string): Promise<Tracking>;
 }

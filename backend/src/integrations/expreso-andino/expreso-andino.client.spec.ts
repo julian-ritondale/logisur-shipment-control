@@ -286,6 +286,52 @@ describe('ExpresoAndinoClient', () => {
     });
   });
 
+  describe('Scenario: tracking a loaded shipment', () => {
+    it('Given the carrier tracks it, when asked, then its status and estimated delivery come back', async () => {
+      const { fetchFn, calls } = scriptedFetch(
+        json(200, {
+          tracking_id: 'AND1',
+          external_ref: 'R-1',
+          status: 'IN_TRANSIT',
+          estimated_delivery: '2026-10-02',
+        }),
+      );
+      await expect(client(fetchFn).track('AND1')).resolves.toEqual({
+        status: 'IN_TRANSIT',
+        estimatedDelivery: '2026-10-02',
+      });
+      expect(routes(calls)).toEqual(['GET /v1/shipments/AND1']);
+    });
+
+    it('Given a 503 then the status, when asked, then it is retried and succeeds', async () => {
+      const { fetchFn } = scriptedFetch(
+        json(503, {}),
+        json(200, { status: 'DELIVERED' }),
+      );
+      await expect(client(fetchFn).track('AND1')).resolves.toEqual({
+        status: 'DELIVERED',
+        estimatedDelivery: undefined,
+      });
+    });
+
+    it('Given a 401, when asked, then it throws UNAUTHORIZED without retrying', async () => {
+      const { fetchFn, calls } = scriptedFetch(json(401, {}));
+      await expect(client(fetchFn).track('AND1')).rejects.toMatchObject({
+        kind: DeliveryStatus.UNAUTHORIZED,
+      });
+      expect(calls).toHaveLength(1);
+    });
+
+    it('Given a status the API does not document, when asked, then it is not guessed: UNAVAILABLE after the retries', async () => {
+      const { fetchFn } = scriptedFetch(
+        ...Array.from({ length: 4 }, () => json(200, { status: 'LOST' })),
+      );
+      await expect(client(fetchFn).track('AND1')).rejects.toMatchObject({
+        kind: DeliveryStatus.UNAVAILABLE,
+      });
+    });
+  });
+
   describe('Scenario: provinces', () => {
     it('Given the API lists provinces, when asked, then they come back as they are spelled', async () => {
       const { fetchFn, calls } = scriptedFetch(

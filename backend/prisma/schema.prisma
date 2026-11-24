@@ -38,6 +38,15 @@ enum ShipmentStatus {
   FAILED
 }
 
+/// The carrier's own tracking status (`GET /v1/shipments/{tracking_id}`).
+/// DELIVERED here means the customer received it; LOADED (ShipmentStatus) only that the carrier has it.
+enum CarrierStatus {
+  CREATED
+  IN_TRANSIT
+  DELIVERED
+  EXCEPTION
+}
+
 enum AttemptOutcome {
   LOADED
   SKIPPED
@@ -126,7 +135,11 @@ model Shipment {
   payload           Json?
   /// Output of DELIVER.
   trackingId        String?        @map("tracking_id")
-  loadedAt       DateTime?      @map("loaded_at") @db.Timestamptz(3)
+  loadedAt          DateTime?      @map("loaded_at") @db.Timestamptz(3)
+  /// The carrier's tracking, from the last status check (`POST /shipments/status-checks`).
+  carrierStatus     CarrierStatus? @map("carrier_status")
+  estimatedDelivery DateTime?      @map("estimated_delivery") @db.Date
+  statusCheckedAt   DateTime?      @map("status_checked_at") @db.Timestamptz(3)
   createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -135,6 +148,8 @@ model Shipment {
 
   @@unique([carrier, externalRef])
   @@index([status])
+  @@index([carrierStatus])
+  @@index([estimatedDelivery])
   @@map("shipments")
 }
 

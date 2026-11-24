@@ -4,9 +4,11 @@ import type { ApiResponse } from '../../common/http/api-client.js';
 import type { JsonObject } from '../../common/types/json.js';
 import {
   CarrierRequestError,
+  CarrierStatus,
   DeliveryStatus,
   type CarrierRejection,
   type DeliveryOutcome,
+  type Tracking,
 } from '../../modules/carriers/carrier-client.js';
 import { Service } from '../../modules/delivery-notes/schemas/delivery-note.schemas.js';
 import type {
@@ -33,6 +35,11 @@ const SEARCH = z.object({
   items: z.array(
     z.object({ tracking_id: z.string(), external_ref: z.string() }),
   ),
+});
+/** `GET /v1/shipments/{tracking_id}` → 200. */
+const TRACKING = z.object({
+  status: z.enum(CarrierStatus),
+  estimated_delivery: z.iso.date().optional(),
 });
 /** The one field of a `POST /v1/shipments` body we read back. */
 const SHIPMENT_REFERENCE = z.object({ external_ref: z.string() });
@@ -144,6 +151,32 @@ export const fromProvincesResponse = ({
     );
   }
   return provinces.data.provinces;
+};
+
+/** `GET /v1/shipments/{tracking_id}`. Throws `CarrierRequestError`: UNAUTHORIZED is final, UNAVAILABLE is retried. */
+export const fromShipmentResponse = ({
+  status,
+  ok,
+  body,
+}: ApiResponse): Tracking => {
+  if (status === HttpStatus.UNAUTHORIZED) {
+    throw new CarrierRequestError(
+      DeliveryStatus.UNAUTHORIZED,
+      'API key refused',
+    );
+  }
+  const tracking = TRACKING.safeParse(body);
+  if (!ok || !tracking.success) {
+    throw new CarrierRequestError(
+      DeliveryStatus.UNAVAILABLE,
+      `GET /v1/shipments/{tracking_id} answered ${status}`,
+      { status },
+    );
+  }
+  return {
+    status: tracking.data.status,
+    estimatedDelivery: tracking.data.estimated_delivery,
+  };
 };
 
 export const fromCreateResponse = ({ status, body }: ApiResponse): Try =>

@@ -7,17 +7,30 @@ import { AppModule } from './../src/app.module.js';
 import type { JsonObject } from './../src/common/types/json.js';
 import {
   CARRIER_CLIENT,
+  CarrierRequestError,
+  CarrierStatus,
   DeliveryStatus,
   type CarrierClient,
   type DeliveryOutcome,
+  type Tracking,
 } from './../src/modules/carriers/carrier-client.js';
 import { PROVINCES } from './../src/modules/delivery-notes/schemas/delivery-note.schemas.js';
 import type { ValidDeliveryNote } from './../src/modules/delivery-notes/types/delivery-note.types.js';
 import { resetDatabase } from './database.js';
 
-/** Stands in for the carrier: scripted outcomes per delivery note, LOADED otherwise. */
+/** Stands in for the carrier: scripted outcomes per delivery note, LOADED otherwise; scripted tracking, CREATED otherwise. */
 class FakeCarrier implements CarrierClient {
   readonly outcomes = new Map<string, DeliveryOutcome[]>();
+  readonly tracking = new Map<string, Tracking | Error>();
+  readonly track = vi.fn(async (trackingId: string): Promise<Tracking> => {
+    const tracked = this.tracking.get(trackingId) ?? {
+      status: CarrierStatus.CREATED,
+    };
+    if (tracked instanceof Error) {
+      throw tracked;
+    }
+    return tracked;
+  });
   readonly provinces = vi.fn(async () => [...PROVINCES]);
   readonly deliver = vi.fn(
     async (request: JsonObject): Promise<DeliveryOutcome> =>
@@ -118,6 +131,7 @@ describe('Runs, reports and shipments (e2e)', () => {
         toShipmentRequest: (note: ValidDeliveryNote) =>
           carrier.toShipmentRequest(note),
         deliver: (request: JsonObject) => carrier.deliver(request),
+        track: (trackingId: string) => carrier.track(trackingId),
       } satisfies CarrierClient)
       .compile();
     app = moduleFixture.createNestApplication();
@@ -440,6 +454,86 @@ describe('Runs, reports and shipments (e2e)', () => {
           reason: 'The carrier rejected the shipment (postal code: invalid)',
         }),
       ]);
+    });
+  });
+
+  describe('Scenario: tracking loaded shipments with the carrier', () => {
+    const checkStatuses = async () =>
+      (await http().post('/shipments/status-checks').expect(201)).body;
+
+    it('Given loaded shipments, when their status is checked, then each keeps the carrier status and estimated delivery, and late ones are flagged', async () => {
+      await run([
+        deliveryNote('R-1', 'EXPRESO ANDINO'),
+        deliveryNote('R-2', 'EXPRESO ANDINO'),
+        deliveryNote('R-3', 'EXPRESO ANDINO'),
+      ]);
+      carrier.tracking.set('TRK-R-1', {
+        status: CarrierStatus.IN_TRANSIT,
+        estimatedDelivery: '2000-01-01',
+      });
+      carrier.tracking.set('TRK-R-2', {
+        status: CarrierStatus.EXCEPTION,
+        estimatedDelivery: '2999-01-01',
+      });
+      carrier.tracking.set('TRK-R-3', {
+        status: CarrierStatus.DELIVERED,
+        estimatedDelivery: '2000-01-01',
+      });
+
+      expect(await checkStatuses()).toMatchObject({
+        checked: 3,
+        failed: 0,
+        late: 1,
+        exceptions: 1,
+      });
+      expect(await shipmentOf('R-1')).toMatchObject({
+        status: 'LOADED',
+        carrierStatus: 'IN_TRANSIT',
+        estimatedDelivery: '2000-01-01',
+        late: true,
+      });
+      expect(await shipmentOf('R-3')).toMatchObject({
+        carrierStatus: 'DELIVERED',
+        late: false,
+      });
+      const lateOnes = (await http().get('/shipments?late=true').expect(200))
+        .body.items;
+      expect(lateOnes.map((s: JsonObject) => s.deliveryNoteNumber)).toEqual([
+        'R-1',
+      ]);
+      const exceptions = (
+        await http().get('/shipments?carrierStatus=EXCEPTION').expect(200)
+      ).body.items;
+      expect(exceptions.map((s: JsonObject) => s.deliveryNoteNumber)).toEqual([
+        'R-2',
+      ]);
+    });
+
+    it('Given a shipment the carrier already delivered, when checked again, then it is not asked about', async () => {
+      await run([deliveryNote('R-1', 'EXPRESO ANDINO')]);
+      carrier.tracking.set('TRK-R-1', { status: CarrierStatus.DELIVERED });
+      await checkStatuses();
+      expect(await checkStatuses()).toMatchObject({ checked: 0 });
+      expect(carrier.track).toHaveBeenCalledTimes(1);
+    });
+
+    it('Given the carrier cannot answer for one shipment, when checked, then it counts as failed and the others are still saved', async () => {
+      await run([
+        deliveryNote('R-1', 'EXPRESO ANDINO'),
+        deliveryNote('R-2', 'EXPRESO ANDINO'),
+      ]);
+      carrier.tracking.set(
+        'TRK-R-1',
+        new CarrierRequestError(DeliveryStatus.UNAVAILABLE, 'down'),
+      );
+      carrier.tracking.set('TRK-R-2', { status: CarrierStatus.IN_TRANSIT });
+      expect(await checkStatuses()).toMatchObject({ checked: 2, failed: 1 });
+      expect((await shipmentOf('R-1')).carrierStatus).toBeUndefined();
+      expect((await shipmentOf('R-2')).carrierStatus).toBe('IN_TRANSIT');
+    });
+
+    it('Given a late filter that is not a boolean, when listed, then it answers 400', async () => {
+      await http().get('/shipments?late=maybe').expect(400);
     });
   });
 

@@ -133,6 +133,7 @@ How it works, in Spanish, with the data model and reason catalogue: [`SOLUCION.m
   - `<carrier>.module.ts` and `<carrier>.client.spec.ts`.
 
   Delivering to several carriers would need routing again; see the roadmap in `SOLUCION.md`.
+- **Tracking (ADR 0015):** after loading, `POST /shipments/status-checks` asks the carrier (`CarrierClient.track`) for each `LOADED` shipment it hasn't delivered, and saves `carrierStatus`, `estimatedDelivery` (a `date` column, `YYYY-MM-DD` in the API) and `statusCheckedAt`. `late` is never stored: it's computed when reading (`isLate` in `shipments.mapper.ts`, and the `late` filter in the repository), against the current UTC day.
 - **Idempotency** is by `external_ref` (= `nro_remito`). Keep the rules in `SOLUCION.md` ("Idempotencia y reintentos") intact:
   - claim a shipment before working on it;
   - treat 409 as loaded;

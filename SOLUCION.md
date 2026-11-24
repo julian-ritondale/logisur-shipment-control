@@ -26,6 +26,7 @@ POST /exports (archivo)        POST /runs { exportId }
 - **Todo queda en PostgreSQL y se puede consultar, paginado y con filtros:** exportaciones, remitos, corridas, intentos y envíos.
 - **Todo envío fallido se puede reintentar.** El reintento retoma desde el paso que falló, sin repetir los anteriores.
 - **Ningún remito se envía dos veces,** aunque se reintente, se vuelva a correr la misma exportación o la API falle a mitad de camino.
+- **Después de cargado, se sigue cada envío.** `POST /shipments/status-checks` le pregunta al transportista el estado y la fecha estimada de entrega de cada envío cargado que todavía no entregó, y marca los atrasados y las excepciones.
 
 ## API
 
@@ -44,7 +45,8 @@ Todo listado es paginado por cursor (`?after=<último id>&limit=20`, máximo 100
 | `GET /runs` | Lista corridas. | `status`, `kind`, `exportId`, `carrier` |
 | `GET /runs/:id` | Una corrida: totales y desglose. | — |
 | `GET /attempts` | Qué le pasó a cada remito en cada corrida. | `runId`, `shipmentId`, `outcome`, `step`, `cause`, `deliveryNoteNumber` |
-| `GET /shipments` | Lista envíos. | `status`, `carrier`, `deliveryNoteNumber`, `failedStep`, `cause` |
+| `GET /shipments` | Lista envíos, con su estado en el transportista y si está atrasado (`late`). | `status`, `carrier`, `deliveryNoteNumber`, `failedStep`, `cause`, `carrierStatus`, `late` |
+| `POST /shipments/status-checks` | Consulta al transportista el estado de cada envío cargado y no entregado. `201` con `{ checked, failed, late, exceptions, checkedAt }`. | — |
 | `GET /shipments/:id` | Un envío, con la salida de cada paso. | — |
 | `POST /shipments/:id/retries` | Nueva corrida que retoma ese envío fallido. | — |
 
@@ -232,6 +234,19 @@ Estados de una corrida: `RUNNING`, `COMPLETED`, `COMPLETED_WITH_FAILURES` y `FAI
 
 `retryable` dice si el envío **se puede** reintentar ahora (sigue en estado `FAILED`). Los fallos de filtrado no tienen envío: se resuelven corrigiendo la exportación.
 
+## Seguimiento: atrasos y excepciones
+
+Que el envío esté cargado (`LOADED`) solo dice que el transportista lo tiene. Para saber si llega a tiempo:
+
+- **`POST /shipments/status-checks`** le pregunta al transportista (`GET /v1/shipments/{tracking_id}`) por cada envío `LOADED` que todavía no entregó, y guarda en el envío:
+  - `carrierStatus`: `CREATED`, `IN_TRANSIT`, `DELIVERED` (lo recibió el cliente) o `EXCEPTION`;
+  - `estimatedDelivery`: la fecha estimada de entrega;
+  - `statusCheckedAt`: cuándo se consultó.
+- **Atrasado (`late`)** es un envío cuya fecha estimada ya pasó y que el transportista no entregó. Se calcula al leer, así que cambia solo con el paso de los días.
+- **Lo que necesita atención** se filtra en `GET /shipments`: `?late=true` o `?carrierStatus=EXCEPTION`, además de `?status=FAILED`.
+- **Si el transportista no responde por un envío,** ese envío conserva su último estado y cuenta como `failed` en la respuesta; los demás se guardan igual. Los que ya entregó no se vuelven a consultar.
+- **Vocabulario:** `LOADED` es nuestro estado (cargado en el transportista) y `DELIVERED` es el del transportista (entregado al cliente). Por eso no usamos "entregado" para lo que cargamos.
+
 ## Idempotencia y reintentos
 
 ### Qué dice la API (`expreso-api/API.md`)
@@ -310,7 +325,7 @@ Para **corregir datos** (por ejemplo, el código postal que falta) se sube una e
   - Los envíos ya están identificados por (transportista, remito).
 - **Volvería a hacer falta un router** que envíe cada envío al cliente de su transportista, y una corrida podría procesar varios transportistas a la vez. `CARRIER` dejaría de ser configuración y pasaría a ser un dato de la corrida o del remito.
 - **Validación por transportista:** cada integración aportaría sus reglas (por ejemplo, si exige código postal).
-- **Seguimiento:** consultar el estado de cada envío (`GET /v1/shipments/{tracking_id}`: `CREATED`, `IN_TRANSIT`, `DELIVERED`, `EXCEPTION`) con un job periódico y mostrarlo junto al remito.
+- **Seguimiento automático:** hoy el estado se consulta a pedido (`POST /shipments/status-checks`). En producción, un job periódico (`@nestjs/schedule` con `@nestjs/locks`) lo haría solo, y avisaría de los atrasados y las excepciones nuevas.
 - **Selección de transportista con insights:**
   - tasa de éxito, rechazos y tiempos de entrega por transportista, provincia y servicio;
   - costo por envío;

@@ -8,5 +8,7 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    // Decorated classes (class-validator DTOs) need it even in specs that don't boot Nest, as main.ts gets it from Nest.
+    setupFiles: ['reflect-metadata'],
   },
 });

@@ -10,6 +10,7 @@ import {
   DeliveryStatus,
   type CarrierClient,
   type DeliveryOutcome,
+  type Tracking,
 } from '../../modules/carriers/carrier-client.js';
 import type { ValidDeliveryNote } from '../../modules/delivery-notes/types/delivery-note.types.js';
 import {
@@ -17,6 +18,7 @@ import {
   fromProvincesResponse,
   fromRequestError,
   fromSearchResponse,
+  fromShipmentResponse,
   referenceOf,
   toDeliveryOutcome,
   toShipmentRequest,
@@ -105,6 +107,12 @@ export class ExpresoAndinoClient extends ApiClient implements CarrierClient {
       },
     );
     return toDeliveryOutcome(result);
+  }
+
+  track(trackingId: string): Promise<Tracking> {
+    return this.retry.execute(async ({ signal }) =>
+      fromShipmentResponse(await this.getShipment(trackingId, signal)),
+    );
   }
 
   // Endpoints of API.md, one method each
