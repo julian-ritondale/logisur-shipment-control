@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { EnvConfig } from '../../config/env.schema.js';
 import { CARRIER_CLIENT } from '../../modules/carriers/carrier-client.js';
 import { ExpresoAndinoClient } from './expreso-andino.client.js';
 
@@ -9,10 +10,10 @@ import { ExpresoAndinoClient } from './expreso-andino.client.js';
     {
       provide: ExpresoAndinoClient,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) =>
+      useFactory: (config: EnvConfig) =>
         new ExpresoAndinoClient({
-          baseUrl: config.getOrThrow<string>('EXPRESO_API_URL'),
-          apiKey: config.getOrThrow<string>('EXPRESO_API_KEY'),
+          baseUrl: config.get('EXPRESO_API_URL', { infer: true }),
+          apiKey: config.get('EXPRESO_API_KEY', { infer: true }),
         }),
     },
     { provide: CARRIER_CLIENT, useExisting: ExpresoAndinoClient },

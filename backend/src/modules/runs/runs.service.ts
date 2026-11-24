@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { EnvConfig } from '../../config/env.schema.js';
 import {
   toPage,
   type PageResponseDto,
@@ -81,9 +82,9 @@ export class RunsService {
     private readonly runs: RunsRepository,
     private readonly shipments: RunsShipmentsRepository,
     @Inject(CARRIER_CLIENT) private readonly client: CarrierClient,
-    config: ConfigService,
+    @Inject(ConfigService) config: EnvConfig,
   ) {
-    this.carrier = config.getOrThrow<Carrier>('CARRIER');
+    this.carrier = config.get('CARRIER', { infer: true });
   }
 
   async start(exportId: string): Promise<RunResponseDto> {
