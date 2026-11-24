@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Purpose
 
-LogiSur exports its daily delivery notes (*remitos*) as JSON. This system takes that export, keeps the remitos assigned to the carrier **Expreso Andino**, normalizes and validates them, and loads them into Expreso Andino's shipments API reliably: no duplicates, retries on transient failures, and a clear report of what was loaded, skipped or rejected. Domain docs and data are in Spanish.
+LogiSur exports its daily delivery notes (*remitos*) as JSON. This system takes that export, keeps the remitos assigned to the configured carrier (today **Expreso Andino**, the only one with an API), normalizes and validates them, and loads them into the carrier's shipments API reliably: no duplicates, retries on transient failures, and a clear report of what was loaded, skipped or rejected. Domain docs and data are in Spanish, while code, stored values and UI messages are in English. **[`SOLUCION.md`](SOLUCION.md) (Spanish) explains the pipeline end to end**; read it before changing it.
 
 ## Repository layout
 
@@ -15,7 +15,9 @@ LogiSur exports its daily delivery notes (*remitos*) as JSON. This system takes 
 | `expreso-api/` | Stdlib-only Python mock of the Expreso Andino API (`expreso_api.py`) plus its contract (`API.md`). **Read-only**, see below. |
 | `data/` | Daily remitos exports (`remitos_YYYY-MM-DD.json`). These are input fixtures, so don't edit them. Format and known data issues are in `data/README.md`. |
 | `docs/adr/` | Architecture Decision Records. |
-| `docker-compose.yml` | Runs the mock API, backend and frontend together. |
+| `docker/` | Support files for Compose (`postgres/init.sql` creates the e2e test database). |
+| `docker-compose.yml` | Runs PostgreSQL, the mock API, backend and frontend together. |
+| `SOLUCION.md` | How the remitos → carrier pipeline works, its data model, idempotency and roadmap (Spanish). |
 
 ## Hard rules
 
@@ -60,17 +62,23 @@ Every commit follows [Conventional Commits 1.0.0](https://www.conventionalcommit
 ## Commands
 
 ```bash
-# Everything (mock :8000, backend :3000, frontend :8080 with /api -> backend)
+# Everything (postgres :5432, mock :8000, backend :3000, frontend :8080 with /api -> backend)
 docker compose up --build
 docker compose restart expreso-api      # wipe the mock's in-memory state
+docker compose down -v                  # also wipe the database
+curl -F file=@data/remitos_2026-09-30.json localhost:3000/exports            # upload an export
+curl -H "Content-Type: application/json" -d '{"exportId":"<id>"}' localhost:3000/runs   # run it (API: SOLUCION.md)
 
-# Backend (cd backend)
+# Backend (cd backend). Local runs need `docker compose up -d postgres expreso-api`
+# and a .env (cp .env.example .env).
 npm run start:dev
-npm test                                # Vitest unit tests (*.spec.ts beside the code)
+npm test                                # Vitest unit tests (*.spec.ts beside the code), no database
 npx vitest run src/app.controller.spec.ts   # single test file
 npx vitest run -t "returns Hello"       # tests matching a name
-npm run test:e2e
+npm run test:e2e                        # needs PostgreSQL: uses logisur_test (TEST_DATABASE_URL overrides)
 npm run lint
+npm run prisma:migrate -- --name <name> # after editing prisma/schema.prisma: new migration + client
+npm run prisma:generate                 # regenerate the client (src/generated/prisma, git-ignored)
 
 # Frontend (cd frontend)
 npm run dev                             # :5173
@@ -85,14 +93,15 @@ On this Windows machine use `python`, not `python3`. The npm shipped with Node 2
 
 ## Runtime wiring
 
-Docker Compose gives the backend these environment variables:
+Docker Compose gives the backend these environment variables. `@nestjs/config` validates them at startup against a Zod schema (`backend/src/config/env.schema.ts`), and on the host they come from `backend/.env` (see `.env.example`).
 
+- `DATABASE_URL`: `postgresql://logisur:logisur@postgres:5432/logisur`. The container applies pending migrations (`prisma migrate deploy`) before starting.
+- `CARRIER`: which carrier's remitos this deployment processes. Default `EXPRESO_ANDINO`; it can also be `CRUZ_DEL_NORTE` or `TRANSPORTE_LITORAL`, which have no integration yet (their remitos fail as `NO_CARRIER_INTEGRATION`).
 - `EXPRESO_API_URL`: `http://expreso-api:8000`
 - `EXPRESO_API_KEY`: defaults to the mock's key `andino-test-7f3a91`
-- `REMITOS_DIR=/data`: the repo's `data/` folder is mounted read-only at `/data`. When running the backend on the host, point `REMITOS_DIR` at `../data`.
-- `DELIVERY_NOTES_DIR=/app/uploads`: where uploaded exports are stored (named volume `delivery-notes`). On the host it defaults to `./uploads` in the working directory, which is git-ignored. See ADR 0004.
+- `REMITOS_DIR=/data`: the repo's `data/` folder is mounted read-only at `/data`. When running the backend on the host, point `REMITOS_DIR` at `../data`. Nothing reads it yet; exports arrive through uploads.
 
-Only `DELIVERY_NOTES_DIR` is read so far. Use the same names when you wire up the others. The frontend calls the backend through `/api/*`; nginx removes the `/api` prefix, so `/api/foo` reaches `backend:3000/foo`.
+Uploaded exports and their remitos are stored in PostgreSQL (ADR 0005). The frontend calls the backend through `/api/*`; nginx removes the `/api` prefix, so `/api/foo` reaches `backend:3000/foo`.
 
 ## Expreso Andino API essentials (full detail in `expreso-api/API.md`)
 
