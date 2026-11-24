@@ -1,32 +1,26 @@
-# React + TypeScript + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Vite + React + TypeScript, styled with Tailwind CSS v4 and shadcn/ui (see `docs/adr/0003-frontend-ui-stack-tailwind-and-shadcn.md`).
 
-Currently, two official plugins are available:
+## Language
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **The UI is in Spanish (es-AR).** Every user-facing string (labels, headings, messages, page title) is written in Spanish, because the app's users and its domain are Spanish-speaking.
+- **The code is in English.** Identifiers, file and folder names, comments, types, commit messages and docs are in English. For example, a "Remitos" page would live in `src/pages/delivery-notes-page.tsx` as `DeliveryNotesPage`, while its heading reads "Remitos".
 
-## React Compiler
+## Layout
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Path | What it is |
+| --- | --- |
+| `src/components/ui/` | shadcn/ui components. Add more with `npx shadcn@latest add <name>`. |
+| `src/components/layout/` | App shell (header, nav, footer). |
+| `src/pages/` | One component per page. |
+| `src/lib/utils.ts` | `cn()` class-name helper. |
+| `src/index.css` | Tailwind entry point and theme tokens. The brand palette is the `--brand-*` variables in `:root`. |
 
-## Expanding the Oxlint configuration
+## Commands
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm run dev      # :5173
+npm run build
+npm run lint
 ```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
